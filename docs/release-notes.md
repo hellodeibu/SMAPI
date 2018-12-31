@@ -1,4 +1,10 @@
 # Release notes
+## 3.0 (upcoming release)
+These changes have not been released yet.
+
+* For modders:
+  * Added `IContentPack.HasFile` method.
+
 ## 2.11.1
 Released 17 March 2019 for Stardew Valley 1.3.36.
 
