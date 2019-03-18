@@ -1,3 +1,5 @@
+using System;
+
 namespace StardewModdingAPI.Events
 {
     /// <summary>Manages access to events raised by SMAPI.</summary>
@@ -15,8 +17,12 @@ namespace StardewModdingAPI.Events
         /// <summary>Events raised for multiplayer messages and connections.</summary>
         IMultiplayerEvents Multiplayer { get; }
 
-        /// <summary>Events raised when the player data changes.</summary>
-        IPlayerEvents Player { get; }
+        /// <summary>DEPRECATED: Please use Farmer instead. Events raised when the Player data changes.</summary>
+        [Obsolete("Player is deprecated, please use Farmer instead.")]
+        IFarmerEvents Player { get; }
+
+        /// <summary>Events raised when the farmer data changes.</summary>
+        IFarmerEvents Farmer { get; }
 
         /// <summary>Events raised when something changes in the world.</summary>
         IWorldEvents World { get; }

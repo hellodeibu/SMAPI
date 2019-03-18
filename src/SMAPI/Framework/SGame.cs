@@ -712,47 +712,22 @@ namespace StardewModdingAPI.Framework
                     else
                         this.Watchers.TimeWatcher.Reset();
 
-                    // raise player events
                     if (raiseWorldEvents)
                     {
-                        PlayerTracker playerTracker = this.Watchers.CurrentPlayerTracker;
+                        // raise player events
+                        this.RaiseFarmerEvents(this.Watchers.CurrentPlayerTracker);
 
-                        // raise current location changed
-                        if (playerTracker.TryGetNewLocation(out GameLocation newLocation))
+                        // raise farmer events
+                        foreach (KeyValuePair<long, FarmerTracker> f in this.Watchers.FarmerTrackers)
                         {
-                            if (this.Monitor.IsVerbose)
-                                this.Monitor.Log($"Context: set location to {newLocation.Name}.", LogLevel.Trace);
-
-                            GameLocation oldLocation = playerTracker.LocationWatcher.PreviousValue;
-                            events.Warped.Raise(new WarpedEventArgs(playerTracker.Player, oldLocation, newLocation));
-                        }
-
-                        // raise player leveled up a skill
-                        foreach (KeyValuePair<SkillType, IValueWatcher<int>> pair in playerTracker.GetChangedSkills())
-                        {
-                            if (this.Monitor.IsVerbose)
-                                this.Monitor.Log($"Events: player skill '{pair.Key}' changed from {pair.Value.PreviousValue} to {pair.Value.CurrentValue}.", LogLevel.Trace);
-
-                            events.LevelChanged.Raise(new LevelChangedEventArgs(playerTracker.Player, pair.Key, pair.Value.PreviousValue, pair.Value.CurrentValue));
-                        }
-
-                        // raise player inventory changed
-                        ItemStackChange[] changedItems = playerTracker.GetInventoryChanges().ToArray();
-                        if (changedItems.Any())
-                        {
-                            if (this.Monitor.IsVerbose)
-                                this.Monitor.Log("Events: player inventory changed.", LogLevel.Trace);
-                            events.InventoryChanged.Raise(new InventoryChangedEventArgs(playerTracker.Player, changedItems));
-                        }
-
-                        // raise mine level changed
-                        if (playerTracker.TryGetNewMineLevel(out int mineLevel))
-                        {
-                            if (this.Monitor.IsVerbose)
-                                this.Monitor.Log($"Context: mine level changed to {mineLevel}.", LogLevel.Trace);
+                            this.RaiseFarmerEvents(f.Value);
                         }
                     }
+
+                    // Reset all farmer trackers
                     this.Watchers.CurrentPlayerTracker?.Reset();
+                    foreach (KeyValuePair<long, FarmerTracker> f in this.Watchers.FarmerTrackers)
+                        f.Value.Reset();
                 }
 
                 // update save ID watcher
@@ -804,6 +779,46 @@ namespace StardewModdingAPI.Framework
                 // exit if irrecoverable
                 if (!this.UpdateCrashTimer.Decrement())
                     this.Monitor.ExitGameImmediately("the game crashed when updating, and SMAPI was unable to recover the game.");
+            }
+        }
+
+        private void RaiseFarmerEvents(FarmerTracker tracker)
+        {
+            var events = this.Events;
+
+            // raise current location changed
+            if (tracker.TryGetNewLocation(out GameLocation newLocation))
+            {
+                if (this.Monitor.IsVerbose)
+                    this.Monitor.Log($"Context: set location to {newLocation.Name}.", LogLevel.Trace);
+
+                GameLocation oldLocation = tracker.LocationWatcher.PreviousValue;
+                events.Warped.Raise(new WarpedEventArgs(tracker.Farmer, oldLocation, newLocation));
+            }
+
+            // raise player leveled up a skill
+            foreach (KeyValuePair<SkillType, IValueWatcher<int>> pair in tracker.GetChangedSkills())
+            {
+                if (this.Monitor.IsVerbose)
+                    this.Monitor.Log($"Events: player skill '{pair.Key}' changed from {pair.Value.PreviousValue} to {pair.Value.CurrentValue}.", LogLevel.Trace);
+
+                events.LevelChanged.Raise(new LevelChangedEventArgs(tracker.Farmer, pair.Key, pair.Value.PreviousValue, pair.Value.CurrentValue));
+            }
+
+            // raise player inventory changed
+            ItemStackChange[] changedItems = tracker.GetInventoryChanges().ToArray();
+            if (changedItems.Any())
+            {
+                if (this.Monitor.IsVerbose)
+                    this.Monitor.Log("Events: player inventory changed.", LogLevel.Trace);
+                events.InventoryChanged.Raise(new InventoryChangedEventArgs(tracker.Farmer, changedItems));
+            }
+
+            // raise mine level changed
+            if (tracker.TryGetNewMineLevel(out int mineLevel))
+            {
+                if (this.Monitor.IsVerbose)
+                    this.Monitor.Log($"Context: mine level changed to {mineLevel}.", LogLevel.Trace);
             }
         }
 

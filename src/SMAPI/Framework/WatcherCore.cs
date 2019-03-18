@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Microsoft.Xna.Framework;
@@ -27,7 +28,10 @@ namespace StardewModdingAPI.Framework
         public readonly IValueWatcher<Point> WindowSizeWatcher;
 
         /// <summary>Tracks changes to the current player.</summary>
-        public PlayerTracker CurrentPlayerTracker;
+        public FarmerTracker CurrentPlayerTracker;
+
+        /// <summary>Stores each tracker for farmhands.</summary>
+        public Dictionary<long, FarmerTracker> FarmerTrackers = new Dictionary<long, FarmerTracker>();
 
         /// <summary>Tracks changes to the time of day (in 24-hour military format).</summary>
         public readonly IValueWatcher<int> TimeWatcher;
@@ -86,10 +90,10 @@ namespace StardewModdingAPI.Framework
             // reset player
             if (Context.IsWorldReady)
             {
-                if (this.CurrentPlayerTracker == null || this.CurrentPlayerTracker.Player != Game1.player)
+                if (this.CurrentPlayerTracker == null || this.CurrentPlayerTracker.Farmer != Game1.player)
                 {
                     this.CurrentPlayerTracker?.Dispose();
-                    this.CurrentPlayerTracker = new PlayerTracker(Game1.player);
+                    this.CurrentPlayerTracker = new FarmerTracker(Game1.player);
                 }
             }
             else
@@ -101,12 +105,50 @@ namespace StardewModdingAPI.Framework
                 }
             }
 
+            // reset farmers
+            if (Context.IsWorldReady)
+            {
+                foreach (KeyValuePair<long, Farmer> f in Game1.otherFarmers)
+                {
+                    if (!this.FarmerTrackers.ContainsKey(f.Key))
+                    {
+                        this.FarmerTrackers.Add(f.Key, new FarmerTracker(f.Value));
+                    }
+                }
+
+                // TODO: There should be a cleaner way to make this work.
+                Dictionary<long, FarmerTracker> copy = new Dictionary<long, FarmerTracker>(this.FarmerTrackers);
+                foreach (KeyValuePair<long, FarmerTracker> f in copy)
+                {
+                    if (!Game1.otherFarmers.ContainsKey(f.Key))
+                    {
+                        f.Value.Dispose();
+                        this.FarmerTrackers.Remove(f.Key);
+                    }
+                }
+            }
+            else
+            {
+                if (this.FarmerTrackers.Count > 0)
+                {
+                    foreach (KeyValuePair<long, FarmerTracker> f in this.FarmerTrackers)
+                    {
+                        f.Value.Dispose();
+                    }
+
+                    this.FarmerTrackers.Clear();
+                }
+            }
+
             // update values
             foreach (IWatcher watcher in this.Watchers)
                 watcher.Update();
             this.CurrentPlayerTracker?.Update();
+            foreach (KeyValuePair<long, FarmerTracker> f in this.FarmerTrackers)
+                f.Value?.Update();
             this.LocationsWatcher.Update();
         }
+    
 
         /// <summary>Reset the current values as the baseline.</summary>
         public void Reset()
@@ -114,6 +156,10 @@ namespace StardewModdingAPI.Framework
             foreach (IWatcher watcher in this.Watchers)
                 watcher.Reset();
             this.CurrentPlayerTracker?.Reset();
+
+            foreach (KeyValuePair<long, FarmerTracker> f in this.FarmerTrackers)
+                f.Value.Reset();
+
             this.LocationsWatcher.Reset();
         }
     }

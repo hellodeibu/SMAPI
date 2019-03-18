@@ -1,3 +1,4 @@
+using System;
 using StardewModdingAPI.Events;
 
 namespace StardewModdingAPI.Framework.Events
@@ -20,8 +21,12 @@ namespace StardewModdingAPI.Framework.Events
         /// <summary>Events raised for multiplayer messages and connections.</summary>
         public IMultiplayerEvents Multiplayer { get; }
 
-        /// <summary>Events raised when the player data changes.</summary>
-        public IPlayerEvents Player { get; }
+        /// <summary>DEPRECATED: Please use Farmer instead. Events raised when the Player data changes.</summary>
+        [Obsolete("Player is deprecated, please use Farmer instead.")]
+        public IFarmerEvents Player { get; }
+
+        /// <summary>Events raised when the farmer data changes.</summary>
+        public IFarmerEvents Farmer { get; }
 
         /// <summary>Events raised when something changes in the world.</summary>
         public IWorldEvents World { get; }
@@ -42,7 +47,7 @@ namespace StardewModdingAPI.Framework.Events
             this.GameLoop = new ModGameLoopEvents(mod, eventManager);
             this.Input = new ModInputEvents(mod, eventManager);
             this.Multiplayer = new ModMultiplayerEvents(mod, eventManager);
-            this.Player = new ModPlayerEvents(mod, eventManager);
+            this.Farmer = new ModFarmerEvents(mod, eventManager);
             this.World = new ModWorldEvents(mod, eventManager);
             this.Specialised = new ModSpecialisedEvents(mod, eventManager);
         }

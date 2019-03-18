@@ -26,3 +26,5 @@ _ReSharper*/
 
 # sensitive files
 appsettings.Development.json
+
+.DS_Store
