@@ -39,7 +39,7 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
                 .WithArguments(new
                 {
                     action = "parse",
-                    page = "Modding:SMAPI_compatibility",
+                    page = "Modding:Mod_compatibility",
                     format = "json"
                 })
                 .As<ResponseModel>();
@@ -98,6 +98,7 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
                 string customSourceUrl = this.GetAttribute(node, "data-custom-source");
                 string customUrl = this.GetAttribute(node, "data-url");
                 string anchor = this.GetAttribute(node, "id");
+                string contentPackFor = this.GetAttribute(node, "data-content-pack-for");
 
                 // parse stable compatibility
                 WikiCompatibilityInfo compatibility = new WikiCompatibilityInfo
@@ -142,6 +143,7 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
                     GitHubRepo = githubRepo,
                     CustomSourceUrl = customSourceUrl,
                     CustomUrl = customUrl,
+                    ContentPackFor = contentPackFor,
                     Compatibility = compatibility,
                     BetaCompatibility = betaCompatibility,
                     Smapi3Status = smapi3Status,

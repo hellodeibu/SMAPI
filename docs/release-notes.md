@@ -10,8 +10,25 @@ These changes have not been released yet.
 
 * For modders:
   * Added `IContentPack.HasFile` method.
+  * `this.Monitor.Log` now defaults to the `Trace` log level instead of `Debug`.
   * Dropped support for all deprecated APIs.
   * Updated to Json.NET 12.0.1.
+
+## 2.11.1
+Released 17 March 2019 for Stardew Valley 1.3.36.
+
+* For players:
+  * Added crops option to `world_clear` console command.
+  * Prepared compatibility check for Stardew Valley 1.4.
+  * Updated mod compatibility list.
+  * Fixed `world_clear` console command removing chests edited to have a debris name.
+
+* For modders:
+  * Added support for suppressing false-positive warnings in rare cases.
+
+* For the web UI:
+  * The log parser now collapses redundant sections by default.
+  * Fixed log parser column resize bug.
 
 ## 2.11
 Released 01 March 2019 for Stardew Valley 1.3.36.

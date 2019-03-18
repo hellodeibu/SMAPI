@@ -1,11 +1,10 @@
 using System;
-using StardewModdingAPI.Events;
 
-namespace StardewModdingAPI.Framework.ModLoading
+namespace StardewModdingAPI.Toolkit.Framework.ModData
 {
     /// <summary>Indicates a detected non-error mod issue.</summary>
     [Flags]
-    internal enum ModWarning
+    public enum ModWarning
     {
         /// <summary>No issues detected.</summary>
         None = 0,
@@ -22,7 +21,7 @@ namespace StardewModdingAPI.Framework.ModLoading
         /// <summary>The mod uses the <c>dynamic</c> keyword which won't work on Linux/Mac.</summary>
         UsesDynamic = 8,
 
-        /// <summary>The mod references <see cref="ISpecialisedEvents.UnvalidatedUpdateTicking"/> or <see cref="ISpecialisedEvents.UnvalidatedUpdateTicked"/> which may impact stability.</summary>
+        /// <summary>The mod references specialised 'unvalided update tick' events which may impact stability.</summary>
         UsesUnvalidatedUpdateTick = 16,
 
         /// <summary>The mod has no update keys set.</summary>

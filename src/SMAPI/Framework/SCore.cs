@@ -1069,7 +1069,9 @@ namespace StardewModdingAPI.Framework
                 // issue block format logic
                 void LogWarningGroup(ModWarning warning, LogLevel logLevel, string heading, params string[] blurb)
                 {
-                    IModMetadata[] matches = modsWithWarnings.Where(p => p.Warnings.HasFlag(warning)).ToArray();
+                    IModMetadata[] matches = modsWithWarnings
+                        .Where(mod => mod.HasUnsuppressWarning(warning))
+                        .ToArray();
                     if (!matches.Any())
                         return;
 

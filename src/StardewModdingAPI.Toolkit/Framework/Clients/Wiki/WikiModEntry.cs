@@ -33,6 +33,9 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
         /// <summary>The custom mod page URL (if applicable).</summary>
         public string CustomUrl { get; set; }
 
+        /// <summary>The name of the mod which loads this content pack, if applicable.</summary>
+        public string ContentPackFor { get; set; }
+
         /// <summary>The mod's compatibility with the latest stable version of the game.</summary>
         public WikiCompatibilityInfo Compatibility { get; set; }
 

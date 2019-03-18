@@ -20,13 +20,8 @@ namespace StardewModdingAPI.Toolkit.Framework.ModData
         /// <remarks>
         /// This uses a custom format which uniquely identifies a mod across multiple versions and
         /// supports matching other fields if no ID was specified. This doesn't include the latest
-        /// ID, if any. Format rules:
-        ///   1. If the mod's ID changed over time, multiple variants can be separated by the
-        ///      <c>|</c> character.
-        ///   2. Each variant can take one of two forms:
-        ///      - A simple string matching the mod's UniqueID value.
-        ///      - A JSON structure containing any of four manifest fields (ID, Name, Author, and
-        ///        EntryDll) to match.
+        /// ID, if any. If the mod's ID changed over time, multiple variants can be separated by the
+        /// <c>|</c> character.
         /// </remarks>
         public string FormerIDs { get; set; }
 
@@ -35,6 +30,9 @@ namespace StardewModdingAPI.Toolkit.Framework.ModData
 
         /// <summary>Maps remote versions to a semantic version for update checks.</summary>
         public IDictionary<string, string> MapRemoteVersions { get; set; } = new Dictionary<string, string>();
+
+        /// <summary>The mod warnings to suppress, even if they'd normally be shown.</summary>
+        public ModWarning SuppressWarnings { get; set; }
 
         /// <summary>This field stores properties that aren't mapped to another field before they're parsed into <see cref="Fields"/>.</summary>
         [JsonExtensionData]

@@ -20,13 +20,13 @@ namespace StardewModdingAPI
         ** Public
         ****/
         /// <summary>SMAPI's current semantic version.</summary>
-        public static ISemanticVersion ApiVersion { get; } = new Toolkit.SemanticVersion("2.11.0");
+        public static ISemanticVersion ApiVersion { get; } = new Toolkit.SemanticVersion("2.11.1");
 
         /// <summary>The minimum supported version of Stardew Valley.</summary>
         public static ISemanticVersion MinimumGameVersion { get; } = new GameVersion("1.3.36");
 
         /// <summary>The maximum supported version of Stardew Valley.</summary>
-        public static ISemanticVersion MaximumGameVersion { get; } = null;
+        public static ISemanticVersion MaximumGameVersion { get; } = new GameVersion("1.3.36");
 
         /// <summary>The target game platform.</summary>
         public static GamePlatform TargetPlatform => (GamePlatform)Constants.Platform;
@@ -89,7 +89,7 @@ namespace StardewModdingAPI
         internal static string ModsPath { get; set; }
 
         /// <summary>The game's current semantic version.</summary>
-        internal static ISemanticVersion GameVersion { get; } = new GameVersion(Constants.GetGameVersion());
+        internal static ISemanticVersion GameVersion { get; } = new GameVersion(Game1.version);
 
         /// <summary>The target game platform.</summary>
         internal static Platform Platform { get; } = EnvironmentUtility.DetectPlatform();
@@ -175,16 +175,6 @@ namespace StardewModdingAPI
         /*********
         ** Private methods
         *********/
-        /// <summary>Get the game's current version string.</summary>
-        private static string GetGameVersion()
-        {
-            // we need reflection because it's a constant, so SMAPI's references to it are inlined at compile-time
-            FieldInfo field = typeof(Game1).GetField(nameof(Game1.version), BindingFlags.Public | BindingFlags.Static);
-            if (field == null)
-                throw new InvalidOperationException($"The {nameof(Game1)}.{nameof(Game1.version)} field could not be found.");
-            return (string)field.GetValue(null);
-        }
-
         /// <summary>Get the name of the save folder, if any.</summary>
         internal static string GetSaveFolderName()
         {

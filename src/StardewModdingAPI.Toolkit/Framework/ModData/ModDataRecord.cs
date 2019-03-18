@@ -19,6 +19,9 @@ namespace StardewModdingAPI.Toolkit.Framework.ModData
         /// <summary>The former mod IDs (if any).</summary>
         public string[] FormerIDs { get; }
 
+        /// <summary>The mod warnings to suppress, even if they'd normally be shown.</summary>
+        public ModWarning SuppressWarnings { get; set; }
+
         /// <summary>Maps local versions to a semantic version for update checks.</summary>
         public IDictionary<string, string> MapLocalVersions { get; }
 
@@ -40,6 +43,7 @@ namespace StardewModdingAPI.Toolkit.Framework.ModData
             this.DisplayName = displayName;
             this.ID = model.ID;
             this.FormerIDs = model.GetFormerIDs().ToArray();
+            this.SuppressWarnings = model.SuppressWarnings;
             this.MapLocalVersions = new Dictionary<string, string>(model.MapLocalVersions, StringComparer.InvariantCultureIgnoreCase);
             this.MapRemoteVersions = new Dictionary<string, string>(model.MapRemoteVersions, StringComparer.InvariantCultureIgnoreCase);
             this.Fields = model.GetFields().ToArray();
