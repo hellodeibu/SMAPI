@@ -427,8 +427,8 @@ namespace StardewModdingAPI.Framework
             LocalizedContentManager.LanguageCode languageCode = this.ContentCore.Language;
 
             // update mod translation helpers
-            foreach (IModMetadata mod in this.ModRegistry.GetAll(contentPacks: false))
-                (mod.Mod.Helper.Translation as TranslationHelper)?.SetLocale(locale, languageCode);
+            foreach (IModMetadata mod in this.ModRegistry.GetAll())
+                mod.Translations.SetLocale(locale, languageCode);
         }
 
         /// <summary>Run a loop handling console input.</summary>
@@ -725,8 +725,9 @@ namespace StardewModdingAPI.Framework
                         LogSkip(contentPack, errorPhrase, errorDetails);
                 }
             }
-            IModMetadata[] loadedContentPacks = this.ModRegistry.GetAll(assemblyMods: false).ToArray();
-            IModMetadata[] loadedMods = this.ModRegistry.GetAll(contentPacks: false).ToArray();
+            IModMetadata[] loaded = this.ModRegistry.GetAll().ToArray();
+            IModMetadata[] loadedContentPacks = loaded.Where(p => p.IsContentPack).ToArray();
+            IModMetadata[] loadedMods = loaded.Where(p => !p.IsContentPack).ToArray();
 
             // unlock content packs
             this.ModRegistry.AreAllModsLoaded = true;
@@ -766,10 +767,10 @@ namespace StardewModdingAPI.Framework
             }
 
             // log mod warnings
-            this.LogModWarnings(this.ModRegistry.GetAll().ToArray(), skippedMods);
+            this.LogModWarnings(loaded, skippedMods);
 
             // initialise translations
-            this.ReloadTranslations(loadedMods);
+            this.ReloadTranslations(loaded);
 
             // initialise loaded non-content-pack mods
             foreach (IModMetadata metadata in loadedMods)
@@ -919,8 +920,9 @@ namespace StardewModdingAPI.Framework
                 IManifest manifest = mod.Manifest;
                 IMonitor monitor = this.GetSecondaryMonitor(mod.DisplayName);
                 IContentHelper contentHelper = new ContentHelper(this.ContentCore, mod.DirectoryPath, manifest.UniqueID, mod.DisplayName, monitor);
-                IContentPack contentPack = new ContentPack(mod.DirectoryPath, manifest, contentHelper, jsonHelper);
-                mod.SetMod(contentPack, monitor);
+                TranslationHelper translationHelper = new TranslationHelper(manifest.UniqueID, manifest.Name, contentCore.GetLocale(), contentCore.Language);
+                IContentPack contentPack = new ContentPack(mod.DirectoryPath, manifest, contentHelper, translationHelper, jsonHelper);
+                mod.SetMod(contentPack, monitor, translationHelper);
                 this.ModRegistry.Add(mod);
 
                 errorReasonPhrase = null;
@@ -982,6 +984,7 @@ namespace StardewModdingAPI.Framework
 
                     // init mod helpers
                     IMonitor monitor = this.GetSecondaryMonitor(mod.DisplayName);
+                    TranslationHelper translationHelper = new TranslationHelper(manifest.UniqueID, manifest.Name, contentCore.GetLocale(), contentCore.Language);
                     IModHelper modHelper;
                     {
                         IModEvents events = new ModEvents(mod, this.EventManager);
@@ -992,13 +995,13 @@ namespace StardewModdingAPI.Framework
                         IReflectionHelper reflectionHelper = new ReflectionHelper(manifest.UniqueID, mod.DisplayName, this.Reflection);
                         IModRegistry modRegistryHelper = new ModRegistryHelper(manifest.UniqueID, this.ModRegistry, proxyFactory, monitor);
                         IMultiplayerHelper multiplayerHelper = new MultiplayerHelper(manifest.UniqueID, this.GameInstance.Multiplayer);
-                        ITranslationHelper translationHelper = new TranslationHelper(manifest.UniqueID, manifest.Name, contentCore.GetLocale(), contentCore.Language);
 
                         IContentPack CreateFakeContentPack(string packDirPath, IManifest packManifest)
                         {
                             IMonitor packMonitor = this.GetSecondaryMonitor(packManifest.Name);
                             IContentHelper packContentHelper = new ContentHelper(contentCore, packDirPath, packManifest.UniqueID, packManifest.Name, packMonitor);
-                            return new ContentPack(packDirPath, packManifest, packContentHelper, this.Toolkit.JsonHelper);
+                            ITranslationHelper packTranslationHelper = new TranslationHelper(packManifest.UniqueID, packManifest.Name, contentCore.GetLocale(), contentCore.Language);
+                            return new ContentPack(packDirPath, packManifest, packContentHelper, packTranslationHelper, this.Toolkit.JsonHelper);
                         }
 
                         modHelper = new ModHelper(manifest.UniqueID, mod.DirectoryPath, this.GameInstance.Input, events, contentHelper, contentPackHelper, commandHelper, dataHelper, modRegistryHelper, reflectionHelper, multiplayerHelper, translationHelper);
@@ -1010,7 +1013,7 @@ namespace StardewModdingAPI.Framework
                     modEntry.Monitor = monitor;
 
                     // track mod
-                    mod.SetMod(modEntry);
+                    mod.SetMod(modEntry, translationHelper);
                     this.ModRegistry.Add(mod);
                     return true;
                 }
@@ -1025,7 +1028,7 @@ namespace StardewModdingAPI.Framework
         /// <summary>Write a summary of mod warnings to the console and log.</summary>
         /// <param name="mods">The loaded mods.</param>
         /// <param name="skippedMods">The mods which were skipped, along with the friendly and developer reasons.</param>
-        private void LogModWarnings(IModMetadata[] mods, IDictionary<IModMetadata, Tuple<string, string>> skippedMods)
+        private void LogModWarnings(IEnumerable<IModMetadata> mods, IDictionary<IModMetadata, Tuple<string, string>> skippedMods)
         {
             // get mods with warnings
             IModMetadata[] modsWithWarnings = mods.Where(p => p.Warnings != ModWarning.None).ToArray();
@@ -1165,9 +1168,6 @@ namespace StardewModdingAPI.Framework
             JsonHelper jsonHelper = this.Toolkit.JsonHelper;
             foreach (IModMetadata metadata in mods)
             {
-                if (metadata.IsContentPack)
-                    throw new InvalidOperationException("Can't reload translations for a content pack.");
-
                 // read translation files
                 IDictionary<string, IDictionary<string, string>> translations = new Dictionary<string, IDictionary<string, string>>();
                 DirectoryInfo translationsDir = new DirectoryInfo(Path.Combine(metadata.DirectoryPath, "i18n"));
@@ -1217,8 +1217,7 @@ namespace StardewModdingAPI.Framework
                 }
 
                 // update translation
-                TranslationHelper translationHelper = (TranslationHelper)metadata.Mod.Helper.Translation;
-                translationHelper.SetTranslations(translations);
+                metadata.Translations.SetTranslations(translations);
             }
         }
 
