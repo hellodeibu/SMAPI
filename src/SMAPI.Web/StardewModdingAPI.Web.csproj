@@ -28,12 +28,6 @@
     <ProjectReference Include="..\StardewModdingAPI.Toolkit\StardewModdingAPI.Toolkit.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Content Update="Views\Index\Privacy.cshtml">
-      <Pack>$(IncludeRazorContentInPack)</Pack>
-    </Content>
-    <Content Update="Views\Mods\Index.cshtml">
-      <Pack>$(IncludeRazorContentInPack)</Pack>
-    </Content>
     <Content Update="wwwroot\StardewModdingAPI.metadata.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

@@ -718,7 +718,7 @@ namespace StardewModdingAPI.Framework
                         this.RaiseFarmerEvents(this.Watchers.CurrentPlayerTracker);
 
                         // raise farmer events
-                        foreach (KeyValuePair<long, FarmerTracker> f in this.Watchers.FarmerTrackers)
+                        foreach (KeyValuePair<long, PlayerTracker> f in this.Watchers.OtherPlayerTrackers)
                         {
                             this.RaiseFarmerEvents(f.Value);
                         }
@@ -726,7 +726,7 @@ namespace StardewModdingAPI.Framework
 
                     // Reset all farmer trackers
                     this.Watchers.CurrentPlayerTracker?.Reset();
-                    foreach (KeyValuePair<long, FarmerTracker> f in this.Watchers.FarmerTrackers)
+                    foreach (KeyValuePair<long, PlayerTracker> f in this.Watchers.OtherPlayerTrackers)
                         f.Value.Reset();
                 }
 
@@ -782,7 +782,7 @@ namespace StardewModdingAPI.Framework
             }
         }
 
-        private void RaiseFarmerEvents(FarmerTracker tracker)
+        private void RaiseFarmerEvents(PlayerTracker tracker)
         {
             var events = this.Events;
 
@@ -793,7 +793,7 @@ namespace StardewModdingAPI.Framework
                     this.Monitor.Log($"Context: set location to {newLocation.Name}.", LogLevel.Trace);
 
                 GameLocation oldLocation = tracker.LocationWatcher.PreviousValue;
-                events.Warped.Raise(new WarpedEventArgs(tracker.Farmer, oldLocation, newLocation));
+                events.Warped.Raise(new WarpedEventArgs(tracker.Player, oldLocation, newLocation));
             }
 
             // raise player leveled up a skill
@@ -802,7 +802,7 @@ namespace StardewModdingAPI.Framework
                 if (this.Monitor.IsVerbose)
                     this.Monitor.Log($"Events: player skill '{pair.Key}' changed from {pair.Value.PreviousValue} to {pair.Value.CurrentValue}.", LogLevel.Trace);
 
-                events.LevelChanged.Raise(new LevelChangedEventArgs(tracker.Farmer, pair.Key, pair.Value.PreviousValue, pair.Value.CurrentValue));
+                events.LevelChanged.Raise(new LevelChangedEventArgs(tracker.Player, pair.Key, pair.Value.PreviousValue, pair.Value.CurrentValue));
             }
 
             // raise player inventory changed
@@ -811,7 +811,7 @@ namespace StardewModdingAPI.Framework
             {
                 if (this.Monitor.IsVerbose)
                     this.Monitor.Log("Events: player inventory changed.", LogLevel.Trace);
-                events.InventoryChanged.Raise(new InventoryChangedEventArgs(tracker.Farmer, changedItems));
+                events.InventoryChanged.Raise(new InventoryChangedEventArgs(tracker.Player, changedItems));
             }
 
             // raise mine level changed

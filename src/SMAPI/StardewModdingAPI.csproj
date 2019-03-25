@@ -94,7 +94,7 @@
     <Compile Include="Events\IModEvents.cs" />
     <Compile Include="Events\IMultiplayerEvents.cs" />
     <Compile Include="Events\InventoryChangedEventArgs.cs" />
-    <Compile Include="Events\IFarmerEvents.cs" />
+    <Compile Include="Events\IPlayerEvents.cs" />
     <Compile Include="Events\ISpecialisedEvents.cs" />
     <Compile Include="Events\ItemStackChange.cs" />
     <Compile Include="Events\ItemStackSizeChange.cs" />
@@ -143,7 +143,7 @@
     <Compile Include="Framework\Events\ModGameLoopEvents.cs" />
     <Compile Include="Framework\Events\ModInputEvents.cs" />
     <Compile Include="Framework\Events\ModMultiplayerEvents.cs" />
-    <Compile Include="Framework\Events\ModFarmerEvents.cs" />
+    <Compile Include="Framework\Events\ModPlayerEvents.cs" />
     <Compile Include="Framework\Events\ModSpecialisedEvents.cs" />
     <Compile Include="Framework\Events\ModWorldEvents.cs" />
     <Compile Include="Framework\ModHelpers\ContentPackHelper.cs" />
@@ -311,7 +311,7 @@
     <Compile Include="Utilities\SDate.cs" />
     <Compile Include="SButton.cs" />
     <Compile Include="Framework\CursorPosition.cs" />
-    <Compile Include="Framework\StateTracking\FarmerTracker.cs" />
+    <Compile Include="Framework\StateTracking\PlayerTracker.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="StardewModdingAPI.config.json">

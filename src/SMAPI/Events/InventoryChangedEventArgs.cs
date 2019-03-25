@@ -5,7 +5,7 @@ using StardewValley;
 
 namespace StardewModdingAPI.Events
 {
-    /// <summary>Event arguments for an <see cref="IFarmerEvents.InventoryChanged"/> event.</summary>
+    /// <summary>Event arguments for an <see cref="IPlayerEvents.InventoryChanged"/> event.</summary>
     public class InventoryChangedEventArgs : EventArgs
     {
         /*********

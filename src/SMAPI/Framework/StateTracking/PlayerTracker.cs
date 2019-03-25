@@ -10,19 +10,19 @@ using ChangeType = StardewModdingAPI.Events.ChangeType;
 
 namespace StardewModdingAPI.Framework.StateTracking
 {
-    /// <summary>Tracks changes to a farmer's data.</summary>
-    internal class FarmerTracker : IDisposable
+    /// <summary>Tracks changes to a player's data.</summary>
+    internal class PlayerTracker : IDisposable
     {
         /*********
         ** Fields
         *********/
-        /// <summary>The farmer's inventory as of the last reset.</summary>
+        /// <summary>The player's inventory as of the last reset.</summary>
         private IDictionary<Item, int> PreviousInventory;
 
-        /// <summary>The farmer's inventory change as of the last update.</summary>
+        /// <summary>The player's inventory change as of the last update.</summary>
         private IDictionary<Item, int> CurrentInventory;
 
-        /// <summary>The farmer's last valid location.</summary>
+        /// <summary>The player's last valid location.</summary>
         private GameLocation LastValidLocation;
 
         /// <summary>The underlying watchers.</summary>
@@ -32,16 +32,16 @@ namespace StardewModdingAPI.Framework.StateTracking
         /*********
         ** Accessors
         *********/
-        /// <summary>The farmer being tracked.</summary>
-        public Farmer Farmer { get; }
+        /// <summary>The player being tracked.</summary>
+        public Farmer Player { get; }
 
         /// <summary>The farmer's current location.</summary>
         public IValueWatcher<GameLocation> LocationWatcher { get; }
 
-        /// <summary>The farmer's current mine level.</summary>
+        /// <summary>The player's current mine level.</summary>
         public IValueWatcher<int> MineLevelWatcher { get; }
 
-        /// <summary>Tracks changes to the farmer's skill levels.</summary>
+        /// <summary>Tracks changes to the player's skill levels.</summary>
         public IDictionary<SkillType, IValueWatcher<int>> SkillWatchers { get; }
 
 
@@ -50,10 +50,10 @@ namespace StardewModdingAPI.Framework.StateTracking
         *********/
         /// <summary>Construct an instance.</summary>
         /// <param name="farmer">The farmer to track.</param>
-        public FarmerTracker(Farmer farmer)
+        public PlayerTracker(Farmer farmer)
         {
             // init player data
-            this.Farmer = farmer;
+            this.Player = farmer;
             this.PreviousInventory = this.GetInventory();
 
             // init trackers
@@ -105,7 +105,7 @@ namespace StardewModdingAPI.Framework.StateTracking
         /// <remarks>The game will set <see cref="Character.currentLocation"/> to null in some cases, e.g. when they're a secondary player in multiplayer and transition to a location that hasn't been synced yet. While that's happening, this returns the player's last valid location instead.</remarks>
         public GameLocation GetCurrentLocation()
         {
-            return this.Farmer.currentLocation ?? this.LastValidLocation;
+            return this.Player.currentLocation ?? this.LastValidLocation;
         }
 
         /// <summary>Get the player inventory changes between two states.</summary>
@@ -163,7 +163,7 @@ namespace StardewModdingAPI.Framework.StateTracking
         /// <summary>Get the player's current inventory.</summary>
         private IDictionary<Item, int> GetInventory()
         {
-            return this.Farmer.Items
+            return this.Player.Items
                 .Where(n => n != null)
                 .Distinct()
                 .ToDictionary(n => n, n => n.Stack);

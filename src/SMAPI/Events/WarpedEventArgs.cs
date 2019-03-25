@@ -3,7 +3,7 @@ using StardewValley;
 
 namespace StardewModdingAPI.Events
 {
-    /// <summary>Event arguments for an <see cref="IFarmerEvents.Warped"/> event.</summary>
+    /// <summary>Event arguments for an <see cref="IPlayerEvents.Warped"/> event.</summary>
     public class WarpedEventArgs : EventArgs
     {
         /*********

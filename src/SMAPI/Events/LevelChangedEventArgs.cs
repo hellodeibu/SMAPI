@@ -4,7 +4,7 @@ using StardewValley;
 
 namespace StardewModdingAPI.Events
 {
-    /// <summary>Event arguments for a <see cref="IFarmerEvents.LevelChanged"/> event.</summary>
+    /// <summary>Event arguments for a <see cref="IPlayerEvents.LevelChanged"/> event.</summary>
     public class LevelChangedEventArgs : EventArgs
     {
         /*********

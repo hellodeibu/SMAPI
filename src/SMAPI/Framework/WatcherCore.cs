@@ -28,10 +28,10 @@ namespace StardewModdingAPI.Framework
         public readonly IValueWatcher<Point> WindowSizeWatcher;
 
         /// <summary>Tracks changes to the current player.</summary>
-        public FarmerTracker CurrentPlayerTracker;
+        public PlayerTracker CurrentPlayerTracker;
 
-        /// <summary>Stores each tracker for farmhands.</summary>
-        public Dictionary<long, FarmerTracker> FarmerTrackers = new Dictionary<long, FarmerTracker>();
+        /// <summary>Stores a tracker for each farmhand.</summary>
+        public Dictionary<long, PlayerTracker> OtherPlayerTrackers = new Dictionary<long, PlayerTracker>();
 
         /// <summary>Tracks changes to the time of day (in 24-hour military format).</summary>
         public readonly IValueWatcher<int> TimeWatcher;
@@ -90,10 +90,10 @@ namespace StardewModdingAPI.Framework
             // reset player
             if (Context.IsWorldReady)
             {
-                if (this.CurrentPlayerTracker == null || this.CurrentPlayerTracker.Farmer != Game1.player)
+                if (this.CurrentPlayerTracker == null || this.CurrentPlayerTracker.Player != Game1.player)
                 {
                     this.CurrentPlayerTracker?.Dispose();
-                    this.CurrentPlayerTracker = new FarmerTracker(Game1.player);
+                    this.CurrentPlayerTracker = new PlayerTracker(Game1.player);
                 }
             }
             else
@@ -110,33 +110,33 @@ namespace StardewModdingAPI.Framework
             {
                 foreach (KeyValuePair<long, Farmer> f in Game1.otherFarmers)
                 {
-                    if (!this.FarmerTrackers.ContainsKey(f.Key))
+                    if (!this.OtherPlayerTrackers.ContainsKey(f.Key))
                     {
-                        this.FarmerTrackers.Add(f.Key, new FarmerTracker(f.Value));
+                        this.OtherPlayerTrackers.Add(f.Key, new PlayerTracker(f.Value));
                     }
                 }
 
                 // TODO: There should be a cleaner way to make this work.
-                Dictionary<long, FarmerTracker> copy = new Dictionary<long, FarmerTracker>(this.FarmerTrackers);
-                foreach (KeyValuePair<long, FarmerTracker> f in copy)
+                Dictionary<long, PlayerTracker> copy = new Dictionary<long, PlayerTracker>(this.OtherPlayerTrackers);
+                foreach (KeyValuePair<long, PlayerTracker> f in copy)
                 {
                     if (!Game1.otherFarmers.ContainsKey(f.Key))
                     {
                         f.Value.Dispose();
-                        this.FarmerTrackers.Remove(f.Key);
+                        this.OtherPlayerTrackers.Remove(f.Key);
                     }
                 }
             }
             else
             {
-                if (this.FarmerTrackers.Count > 0)
+                if (this.OtherPlayerTrackers.Count > 0)
                 {
-                    foreach (KeyValuePair<long, FarmerTracker> f in this.FarmerTrackers)
+                    foreach (KeyValuePair<long, PlayerTracker> f in this.OtherPlayerTrackers)
                     {
                         f.Value.Dispose();
                     }
 
-                    this.FarmerTrackers.Clear();
+                    this.OtherPlayerTrackers.Clear();
                 }
             }
 
@@ -144,7 +144,7 @@ namespace StardewModdingAPI.Framework
             foreach (IWatcher watcher in this.Watchers)
                 watcher.Update();
             this.CurrentPlayerTracker?.Update();
-            foreach (KeyValuePair<long, FarmerTracker> f in this.FarmerTrackers)
+            foreach (KeyValuePair<long, PlayerTracker> f in this.OtherPlayerTrackers)
                 f.Value?.Update();
             this.LocationsWatcher.Update();
         }
@@ -157,7 +157,7 @@ namespace StardewModdingAPI.Framework
                 watcher.Reset();
             this.CurrentPlayerTracker?.Reset();
 
-            foreach (KeyValuePair<long, FarmerTracker> f in this.FarmerTrackers)
+            foreach (KeyValuePair<long, PlayerTracker> f in this.OtherPlayerTrackers)
                 f.Value.Reset();
 
             this.LocationsWatcher.Reset();

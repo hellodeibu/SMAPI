@@ -211,9 +211,9 @@ namespace StardewModdingAPI.Framework.Events
             this.ModMessageReceived = ManageEventOf<ModMessageReceivedEventArgs>(nameof(IModEvents.Multiplayer), nameof(IMultiplayerEvents.ModMessageReceived));
             this.PeerDisconnected = ManageEventOf<PeerDisconnectedEventArgs>(nameof(IModEvents.Multiplayer), nameof(IMultiplayerEvents.PeerDisconnected));
 
-            this.InventoryChanged = ManageEventOf<InventoryChangedEventArgs>(nameof(IModEvents.Farmer), nameof(IFarmerEvents.InventoryChanged));
-            this.LevelChanged = ManageEventOf<LevelChangedEventArgs>(nameof(IModEvents.Farmer), nameof(IFarmerEvents.LevelChanged));
-            this.Warped = ManageEventOf<WarpedEventArgs>(nameof(IModEvents.Farmer), nameof(IFarmerEvents.Warped));
+            this.InventoryChanged = ManageEventOf<InventoryChangedEventArgs>(nameof(IModEvents.Player), nameof(IPlayerEvents.InventoryChanged));
+            this.LevelChanged = ManageEventOf<LevelChangedEventArgs>(nameof(IModEvents.Player), nameof(IPlayerEvents.LevelChanged));
+            this.Warped = ManageEventOf<WarpedEventArgs>(nameof(IModEvents.Player), nameof(IPlayerEvents.Warped));
 
             this.BuildingListChanged = ManageEventOf<BuildingListChangedEventArgs>(nameof(IModEvents.World), nameof(IWorldEvents.LocationListChanged));
             this.DebrisListChanged = ManageEventOf<DebrisListChangedEventArgs>(nameof(IModEvents.World), nameof(IWorldEvents.DebrisListChanged));
