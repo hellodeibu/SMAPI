@@ -102,10 +102,7 @@ else
             # Kitty overrides the TERM varible unless you set it explicitly
             kitty -o term=xterm $LAUNCHER
             ;;
-        xterm)
-            $LAUNCHTERM -e "$LAUNCHER"
-            ;;
-        xfce4-terminal|gnome-terminal|terminal|termite)
+        xterm|xfce4-terminal|gnome-terminal|terminal|termite)
             $LAUNCHTERM -e "sh -c 'TERM=xterm $LAUNCHER'"
             ;;
         konsole)
