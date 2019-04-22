@@ -64,17 +64,17 @@ else
     # open SMAPI in terminal
     # First let's try xterm (best compatiblity) or find a sensible default
     # Setting TERMINAL should let you override this at the commandline for easier testing of other terminals.
-    for terminal in  "$TERMINAL" xterm x-terminal-emulator kitty terminator xfce4-terminal gnome-terminal konsole terminal termite; do
+    for terminal in "$TERMINAL" xterm x-terminal-emulator kitty terminator xfce4-terminal gnome-terminal konsole terminal termite; do
         if $COMMAND "$terminal" 2>/dev/null; then
             # Find the true shell behind x-terminal-emulator
             if [ "$(basename "$(readlink -ef which "$terminal")")" != "x-terminal-emulator" ]; then
-                    export LAUNCHTERM=$terminal
-                    break;
+                export LAUNCHTERM=$terminal
+                break;
             else
-                    export LAUNCHTERM="$(basename "$(readlink -ef which x-terminal-emulator)")"
-                    # Remember that we are using x-terminal-emulator just in case it points outside the $PATH
-                    export XTE=1
-                    break;
+                export LAUNCHTERM="$(basename "$(readlink -ef which x-terminal-emulator)")"
+                # Remember that we are using x-terminal-emulator just in case it points outside the $PATH
+                export XTE=1
+                break;
             fi
         fi
     done
