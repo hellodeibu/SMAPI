@@ -43,7 +43,7 @@ namespace StardewModdingAPI.Framework
         ** SMAPI state
         ****/
         /// <summary>Encapsulates monitoring and logging for SMAPI.</summary>
-        private readonly IMonitor Monitor;
+        private readonly Monitor Monitor;
 
         /// <summary>Encapsulates monitoring and logging on the game's behalf.</summary>
         private readonly IMonitor MonitorForGame;
@@ -84,6 +84,9 @@ namespace StardewModdingAPI.Framework
 
         /// <summary>Simplifies access to private game code.</summary>
         private readonly Reflector Reflection;
+
+        /// <summary>Propagates notification that SMAPI should exit.</summary>
+        private readonly CancellationTokenSource CancellationToken;
 
         /****
         ** Game state
@@ -137,7 +140,8 @@ namespace StardewModdingAPI.Framework
         /// <param name="deprecationManager">Manages deprecation warnings.</param>
         /// <param name="onGameInitialised">A callback to invoke after the game finishes initialising.</param>
         /// <param name="onGameExiting">A callback to invoke when the game exits.</param>
-        internal SGame(IMonitor monitor, IMonitor monitorForGame, Reflector reflection, EventManager eventManager, JsonHelper jsonHelper, ModRegistry modRegistry, DeprecationManager deprecationManager, Action onGameInitialised, Action onGameExiting)
+        /// <param name="cancellationToken">Propagates notification that SMAPI should exit.</param>
+        internal SGame(Monitor monitor, IMonitor monitorForGame, Reflector reflection, EventManager eventManager, JsonHelper jsonHelper, ModRegistry modRegistry, DeprecationManager deprecationManager, Action onGameInitialised, Action onGameExiting, CancellationTokenSource cancellationToken)
         {
             this.OnLoadingFirstAsset = SGame.ConstructorHack.OnLoadingFirstAsset;
             SGame.ConstructorHack = null;
@@ -161,6 +165,7 @@ namespace StardewModdingAPI.Framework
             Game1.input = new SInputState();
             Game1.multiplayer = new SMultiplayer(monitor, eventManager, jsonHelper, modRegistry, reflection, this.OnModMessageReceived);
             Game1.hooks = new SModHooks(this.OnNewDayAfterFade);
+            this.CancellationToken = cancellationToken;
 
             // init observables
             Game1.locations = new ObservableCollection<GameLocation>();
@@ -274,7 +279,7 @@ namespace StardewModdingAPI.Framework
                 }
 
                 // Abort if SMAPI is exiting.
-                if (this.Monitor.IsExiting)
+                if (this.CancellationToken.IsCancellationRequested)
                 {
                     this.Monitor.Log("SMAPI shutting down: aborting update.", LogLevel.Trace);
                     return;
@@ -805,7 +810,7 @@ namespace StardewModdingAPI.Framework
 
                 // exit if irrecoverable
                 if (!this.UpdateCrashTimer.Decrement())
-                    this.Monitor.ExitGameImmediately("the game crashed when updating, and SMAPI was unable to recover the game.");
+                    this.ExitGameImmediately("The game crashed when updating, and SMAPI was unable to recover the game.");
             }
         }
 
@@ -827,7 +832,7 @@ namespace StardewModdingAPI.Framework
                 // exit if irrecoverable
                 if (!this.DrawCrashTimer.Decrement())
                 {
-                    this.Monitor.ExitGameImmediately("the game crashed when drawing, and SMAPI was unable to recover the game.");
+                    this.ExitGameImmediately("The game crashed when drawing, and SMAPI was unable to recover the game.");
                     return;
                 }
 
@@ -1480,6 +1485,14 @@ namespace StardewModdingAPI.Framework
                     }
                 }
             }
+        }
+
+        /// <summary>Immediately exit the game without saving. This should only be invoked when an irrecoverable fatal error happens that risks save corruption or game-breaking bugs.</summary>
+        /// <param name="message">The fatal log message.</param>
+        private void ExitGameImmediately(string message)
+        {
+            this.Monitor.LogFatal(message);
+            this.CancellationToken.Cancel();
         }
     }
 }

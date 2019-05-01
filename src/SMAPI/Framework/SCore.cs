@@ -57,7 +57,7 @@ namespace StardewModdingAPI.Framework
         private readonly Monitor MonitorForGame;
 
         /// <summary>Tracks whether the game should exit immediately and any pending initialisation should be cancelled.</summary>
-        private readonly CancellationTokenSource CancellationTokenSource = new CancellationTokenSource();
+        private readonly CancellationTokenSource CancellationToken = new CancellationTokenSource();
 
         /// <summary>Simplifies access to private game code.</summary>
         private readonly Reflector Reflection = new Reflector();
@@ -144,7 +144,7 @@ namespace StardewModdingAPI.Framework
             // init basics
             this.Settings = JsonConvert.DeserializeObject<SConfig>(File.ReadAllText(Constants.ApiConfigPath));
             this.LogFile = new LogFileManager(logPath);
-            this.Monitor = new Monitor("SMAPI", this.ConsoleManager, this.LogFile, this.CancellationTokenSource, this.Settings.ColorScheme, this.Settings.VerboseLogging)
+            this.Monitor = new Monitor("SMAPI", this.ConsoleManager, this.LogFile, this.Settings.ColorScheme, this.Settings.VerboseLogging)
             {
                 WriteToConsole = writeToConsole,
                 ShowTraceInConsole = this.Settings.DeveloperMode,
@@ -222,7 +222,8 @@ namespace StardewModdingAPI.Framework
                     modRegistry: this.ModRegistry,
                     deprecationManager: SCore.DeprecationManager,
                     onGameInitialised: this.InitialiseAfterGameStart,
-                    onGameExiting: this.Dispose
+                    onGameExiting: this.Dispose,
+                    cancellationToken: this.CancellationToken
                 );
                 StardewValley.Program.gamePtr = this.GameInstance;
 
@@ -237,7 +238,7 @@ namespace StardewModdingAPI.Framework
                 // add exit handler
                 new Thread(() =>
                 {
-                    this.CancellationTokenSource.Token.WaitHandle.WaitOne();
+                    this.CancellationToken.Token.WaitHandle.WaitOne();
                     if (this.IsGameRunning)
                     {
                         try
@@ -363,7 +364,7 @@ namespace StardewModdingAPI.Framework
             this.IsGameRunning = false;
             this.ConsoleManager?.Dispose();
             this.ContentCore?.Dispose();
-            this.CancellationTokenSource?.Dispose();
+            this.CancellationToken?.Dispose();
             this.GameInstance?.Dispose();
             this.LogFile?.Dispose();
 
@@ -378,7 +379,7 @@ namespace StardewModdingAPI.Framework
         /// <summary>Initialise mods before the first game asset is loaded. At this point the core content managers are loaded (so mods can load their own assets), but the game is mostly uninitialised.</summary>
         private void InitialiseBeforeFirstAssetLoaded()
         {
-            if (this.Monitor.IsExiting)
+            if (this.CancellationToken.IsCancellationRequested)
             {
                 this.Monitor.Log("SMAPI shutting down: aborting initialisation.", LogLevel.Warn);
                 return;
@@ -482,7 +483,7 @@ namespace StardewModdingAPI.Framework
             inputThread.Start();
 
             // keep console thread alive while the game is running
-            while (this.IsGameRunning && !this.Monitor.IsExiting)
+            while (this.IsGameRunning && !this.CancellationToken.IsCancellationRequested)
                 Thread.Sleep(1000 / 10);
             if (inputThread.ThreadState == ThreadState.Running)
                 inputThread.Abort();
@@ -1336,7 +1337,7 @@ namespace StardewModdingAPI.Framework
         /// <param name="name">The name of the module which will log messages with this instance.</param>
         private Monitor GetSecondaryMonitor(string name)
         {
-            return new Monitor(name, this.ConsoleManager, this.LogFile, this.CancellationTokenSource, this.Settings.ColorScheme, this.Settings.VerboseLogging)
+            return new Monitor(name, this.ConsoleManager, this.LogFile, this.Settings.ColorScheme, this.Settings.VerboseLogging)
             {
                 WriteToConsole = this.Monitor.WriteToConsole,
                 ShowTraceInConsole = this.Settings.DeveloperMode,

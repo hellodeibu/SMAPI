@@ -22,7 +22,8 @@ These changes have not been released yet.
   * Mods are now loaded much earlier in the game launch. This lets mods intercept any content asset, but the game is not fully initialised when `Entry` is called (use the `GameLaunched` event if you need to run code when the game is initialised).
   * `this.Monitor.Log` now defaults to the `Trace` log level instead of `Debug`.
   * When a mod is incompatible, the trace logs now list all detected issues instead of the first one.
-  * Dropped support for all deprecated APIs.
+  * Removed all deprecated APIs.
+  * Removed the `Monitor.ExitGameImmediately` method.
   * Updated to Json.NET 12.0.1.
 
 ## 2.11.2
