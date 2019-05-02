@@ -18,6 +18,9 @@ namespace StardewModdingAPI.Toolkit.Framework.ModScanning
         /// <summary>The folder containing the mod's manifest.json.</summary>
         public DirectoryInfo Directory { get; }
 
+        /// <summary>The mod type.</summary>
+        public ModType Type { get; }
+
         /// <summary>The mod manifest.</summary>
         public Manifest Manifest { get; }
 
@@ -34,13 +37,15 @@ namespace StardewModdingAPI.Toolkit.Framework.ModScanning
         /// <summary>Construct an instance.</summary>
         /// <param name="root">The root folder containing mods.</param>
         /// <param name="directory">The folder containing the mod's manifest.json.</param>
+        /// <param name="type">The mod type.</param>
         /// <param name="manifest">The mod manifest.</param>
         /// <param name="manifestParseError">The error which occurred parsing the manifest, if any.</param>
         /// <param name="shouldBeLoaded">Whether the mod should be loaded by default. This should be <c>false</c> if it was found within a folder whose name starts with a dot.</param>
-        public ModFolder(DirectoryInfo root, DirectoryInfo directory, Manifest manifest, string manifestParseError = null, bool shouldBeLoaded = true)
+        public ModFolder(DirectoryInfo root, DirectoryInfo directory, ModType type, Manifest manifest, string manifestParseError = null, bool shouldBeLoaded = true)
         {
             // save info
             this.Directory = directory;
+            this.Type = type;
             this.Manifest = manifest;
             this.ManifestParseError = manifestParseError;
             this.ShouldBeLoaded = shouldBeLoaded;

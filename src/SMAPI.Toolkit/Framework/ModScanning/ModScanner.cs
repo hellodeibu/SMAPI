@@ -65,10 +65,10 @@ namespace StardewModdingAPI.Toolkit.Framework.ModScanning
             {
                 FileInfo[] files = searchFolder.GetFiles("*", SearchOption.AllDirectories).Where(this.IsRelevant).ToArray();
                 if (!files.Any())
-                    return new ModFolder(root, searchFolder, null, "it's an empty folder.");
+                    return new ModFolder(root, searchFolder, ModType.Invalid, null, "it's an empty folder.");
                 if (files.All(file => this.PotentialXnbModExtensions.Contains(file.Extension)))
-                    return new ModFolder(root, searchFolder, null, "it's not a SMAPI mod (see https://smapi.io/xnb for info).");
-                return new ModFolder(root, searchFolder, null, "it contains files, but none of them are manifest.json.");
+                    return new ModFolder(root, searchFolder, ModType.Xnb, null, "it's not a SMAPI mod (see https://smapi.io/xnb for info).");
+                return new ModFolder(root, searchFolder, ModType.Invalid, null, "it contains files, but none of them are manifest.json.");
             }
 
             // read mod info
@@ -98,7 +98,17 @@ namespace StardewModdingAPI.Toolkit.Framework.ModScanning
                 manifest.Author = this.StripNewlines(manifest.Author);
             }
 
-            return new ModFolder(root, manifestFile.Directory, manifest, manifestError);
+            // get mod type
+            ModType type = ModType.Invalid;
+            if (manifest != null)
+            {
+                type = !string.IsNullOrWhiteSpace(manifest.ContentPackFor?.UniqueID)
+                    ? ModType.ContentPack
+                    : ModType.Smapi;
+            }
+
+            // build result
+            return new ModFolder(root, manifestFile.Directory, type, manifest, manifestError);
         }
 
 
@@ -112,7 +122,7 @@ namespace StardewModdingAPI.Toolkit.Framework.ModScanning
         {
             // skip
             if (folder.FullName != root.FullName && folder.Name.StartsWith("."))
-                yield return new ModFolder(root, folder, null, "ignored folder because its name starts with a dot.", shouldBeLoaded: false);
+                yield return new ModFolder(root, folder, ModType.Invalid, null, "ignored folder because its name starts with a dot.", shouldBeLoaded: false);
 
             // recurse into subfolders
             else if (this.IsModSearchFolder(root, folder))
