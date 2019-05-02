@@ -69,6 +69,15 @@ namespace StardewModdingAPI.Toolkit
             return new ModScanner(this.JsonHelper).GetModFolders(rootPath);
         }
 
+        /// <summary>Extract information about all mods in the given folder.</summary>
+        /// <param name="rootPath">The root folder containing mods. Only the <paramref name="modPath"/> will be searched, but this field allows it to be treated as a potential mod folder of its own.</param>
+        /// <param name="modPath">The mod path to search.</param>
+        // /// <param name="tryConsolidateMod">If the folder contains multiple XNB mods, treat them as subfolders of a single mod. This is useful when reading a single mod archive, as opposed to a mods folder.</param>
+        public IEnumerable<ModFolder> GetModFolders(string rootPath, string modPath)
+        {
+            return new ModScanner(this.JsonHelper).GetModFolders(rootPath, modPath);
+        }
+
         /// <summary>Get an update URL for an update key (if valid).</summary>
         /// <param name="updateKey">The update key.</param>
         public string GetUpdateUrl(string updateKey)

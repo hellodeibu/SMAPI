@@ -52,6 +52,15 @@ namespace StardewModdingAPI.Toolkit.Framework.ModScanning
             return this.GetModFolders(root, root);
         }
 
+        /// <summary>Extract information about all mods in the given folder.</summary>
+        /// <param name="rootPath">The root folder containing mods. Only the <paramref name="modPath"/> will be searched, but this field allows it to be treated as a potential mod folder of its own.</param>
+        /// <param name="modPath">The mod path to search.</param>
+        // /// <param name="tryConsolidateMod">If the folder contains multiple XNB mods, treat them as subfolders of a single mod. This is useful when reading a single mod archive, as opposed to a mods folder.</param>
+        public IEnumerable<ModFolder> GetModFolders(string rootPath, string modPath)
+        {
+            return this.GetModFolders(root: new DirectoryInfo(rootPath), folder: new DirectoryInfo(modPath));
+        }
+
         /// <summary>Extract information from a mod folder.</summary>
         /// <param name="root">The root folder containing mods.</param>
         /// <param name="searchFolder">The folder to search for a mod.</param>
@@ -120,17 +129,25 @@ namespace StardewModdingAPI.Toolkit.Framework.ModScanning
         /// <param name="folder">The folder to search for mods.</param>
         public IEnumerable<ModFolder> GetModFolders(DirectoryInfo root, DirectoryInfo folder)
         {
+            bool isRoot = folder.FullName == root.FullName;
+
             // skip
-            if (folder.FullName != root.FullName && folder.Name.StartsWith("."))
+            if (!isRoot && folder.Name.StartsWith("."))
                 yield return new ModFolder(root, folder, ModType.Invalid, null, "ignored folder because its name starts with a dot.", shouldBeLoaded: false);
 
-            // recurse into subfolders
+            // find mods in subfolders
             else if (this.IsModSearchFolder(root, folder))
             {
-                foreach (DirectoryInfo subfolder in folder.EnumerateDirectories())
+                ModFolder[] subfolders = folder.EnumerateDirectories().SelectMany(sub => this.GetModFolders(root, sub)).ToArray();
+                if (!isRoot && subfolders.Length > 1 && subfolders.All(p => p.Type == ModType.Xnb))
                 {
-                    foreach (ModFolder match in this.GetModFolders(root, subfolder))
-                        yield return match;
+                    // if this isn't the root, and all subfolders are XNB mods, treat the whole folder as one XNB mod
+                    yield return new ModFolder(folder, folder, ModType.Xnb, null, subfolders[0].ManifestParseError);
+                }
+                else
+                {
+                    foreach (ModFolder subfolder in subfolders)
+                        yield return subfolder;
                 }
             }
 
