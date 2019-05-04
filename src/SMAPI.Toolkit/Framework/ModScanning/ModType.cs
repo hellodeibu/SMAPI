@@ -6,6 +6,9 @@ namespace StardewModdingAPI.Toolkit.Framework.ModScanning
         /// <summary>The mod is invalid and its type could not be determined.</summary>
         Invalid,
 
+        /// <summary>The folder is ignored by convention.</summary>
+        Ignored,
+
         /// <summary>A mod which uses SMAPI directly.</summary>
         Smapi,
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using StardewModdingAPI.Toolkit.Serialisation;
 using StardewModdingAPI.Toolkit.Serialisation.Models;
 
@@ -17,20 +18,32 @@ namespace StardewModdingAPI.Toolkit.Framework.ModScanning
         private readonly JsonHelper JsonHelper;
 
         /// <summary>A list of filesystem entry names to ignore when checking whether a folder should be treated as a mod.</summary>
-        private readonly HashSet<string> IgnoreFilesystemEntries = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase)
+        private readonly HashSet<Regex> IgnoreFilesystemEntries = new HashSet<Regex>
         {
-            ".DS_Store",
-            "mcs",
-            "Thumbs.db"
+            // OS metadata files
+            new Regex(@"^__folder_managed_by_vortex$", RegexOptions.Compiled | RegexOptions.IgnoreCase), // Vortex mod manager
+            new Regex(@"^(?:__MACOSX|\._\.DS_Store|\.DS_Store|mcs)$", RegexOptions.Compiled | RegexOptions.IgnoreCase), // MacOS
+            new Regex(@"^(?:desktop\.ini|Thumbs\.db)$", RegexOptions.Compiled | RegexOptions.IgnoreCase), // Windows
+            new Regex(@"\.(?:url|lnk)$", RegexOptions.Compiled | RegexOptions.IgnoreCase), // Windows shortcut files
+
+            // other
+            new Regex(@"\.(?:bmp|gif|jpeg|jpg|png|psd|tif)$", RegexOptions.Compiled | RegexOptions.IgnoreCase), // image files
+            new Regex(@"\.(?:md|rtf|txt)$", RegexOptions.Compiled | RegexOptions.IgnoreCase), // text files
+            new Regex(@"\.(?:backup|bak|old)$", RegexOptions.Compiled | RegexOptions.IgnoreCase) // backup file
         };
 
-        /// <summary>The extensions for files which an XNB mod may contain. If a mod contains *only* these file extensions, it should be considered an XNB mod.</summary>
+        /// <summary>The extensions for files which an XNB mod may contain. If a mod doesn't have a <c>manifest.json</c> and contains *only* these file extensions, it should be considered an XNB mod.</summary>
         private readonly HashSet<string> PotentialXnbModExtensions = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase)
         {
-            ".md",
-            ".png",
-            ".txt",
-            ".xnb"
+            // XNB files
+            ".xgs",
+            ".xnb",
+            ".xsb",
+            ".xwb",
+
+            // unpacking artifacts
+            ".json",
+            ".yaml"
         };
 
 
@@ -72,30 +85,36 @@ namespace StardewModdingAPI.Toolkit.Framework.ModScanning
             // set appropriate invalid-mod error
             if (manifestFile == null)
             {
-                FileInfo[] files = searchFolder.GetFiles("*", SearchOption.AllDirectories).Where(this.IsRelevant).ToArray();
+                FileInfo[] files = this.RecursivelyGetRelevantFiles(searchFolder).ToArray();
                 if (!files.Any())
-                    return new ModFolder(root, searchFolder, ModType.Invalid, null, "it's an empty folder.");
-                if (files.All(file => this.PotentialXnbModExtensions.Contains(file.Extension)))
-                    return new ModFolder(root, searchFolder, ModType.Xnb, null, "it's not a SMAPI mod (see https://smapi.io/xnb for info).");
-                return new ModFolder(root, searchFolder, ModType.Invalid, null, "it contains files, but none of them are manifest.json.");
+                    return new ModFolder(root, searchFolder, ModType.Invalid, null, ModParseError.EmptyFolder, "it's an empty folder.");
+                if (files.All(this.IsPotentialXnbFile))
+                    return new ModFolder(root, searchFolder, ModType.Xnb, null, ModParseError.XnbMod, "it's not a SMAPI mod (see https://smapi.io/xnb for info).");
+                return new ModFolder(root, searchFolder, ModType.Invalid, null, ModParseError.ManifestMissing, "it contains files, but none of them are manifest.json.");
             }
 
             // read mod info
             Manifest manifest = null;
-            string manifestError = null;
+            ModParseError error = ModParseError.None;
+            string errorText = null;
             {
                 try
                 {
                     if (!this.JsonHelper.ReadJsonFileIfExists<Manifest>(manifestFile.FullName, out manifest) || manifest == null)
-                        manifestError = "its manifest is invalid.";
+                    {
+                        error = ModParseError.ManifestInvalid;
+                        errorText = "its manifest is invalid.";
+                    }
                 }
                 catch (SParseException ex)
                 {
-                    manifestError = $"parsing its manifest failed: {ex.Message}";
+                    error = ModParseError.ManifestInvalid;
+                    errorText = $"parsing its manifest failed: {ex.Message}";
                 }
                 catch (Exception ex)
                 {
-                    manifestError = $"parsing its manifest failed:\n{ex}";
+                    error = ModParseError.ManifestInvalid;
+                    errorText = $"parsing its manifest failed:\n{ex}";
                 }
             }
 
@@ -117,7 +136,7 @@ namespace StardewModdingAPI.Toolkit.Framework.ModScanning
             }
 
             // build result
-            return new ModFolder(root, manifestFile.Directory, type, manifest, manifestError);
+            return new ModFolder(root, manifestFile.Directory, type, manifest, error, errorText);
         }
 
 
@@ -127,33 +146,55 @@ namespace StardewModdingAPI.Toolkit.Framework.ModScanning
         /// <summary>Recursively extract information about all mods in the given folder.</summary>
         /// <param name="root">The root mod folder.</param>
         /// <param name="folder">The folder to search for mods.</param>
-        public IEnumerable<ModFolder> GetModFolders(DirectoryInfo root, DirectoryInfo folder)
+        private IEnumerable<ModFolder> GetModFolders(DirectoryInfo root, DirectoryInfo folder)
         {
             bool isRoot = folder.FullName == root.FullName;
 
             // skip
-            if (!isRoot && folder.Name.StartsWith("."))
-                yield return new ModFolder(root, folder, ModType.Invalid, null, "ignored folder because its name starts with a dot.", shouldBeLoaded: false);
+            if (!isRoot)
+            {
+                if (folder.Name.StartsWith("."))
+                {
+                    yield return new ModFolder(root, folder, ModType.Ignored, null, ModParseError.IgnoredFolder, "ignored folder because its name starts with a dot.");
+                    yield break;
+                }
+                if (!this.IsRelevant(folder))
+                    yield break;
+            }
 
             // find mods in subfolders
-            else if (this.IsModSearchFolder(root, folder))
+            if (this.IsModSearchFolder(root, folder))
             {
-                ModFolder[] subfolders = folder.EnumerateDirectories().SelectMany(sub => this.GetModFolders(root, sub)).ToArray();
-                if (!isRoot && subfolders.Length > 1 && subfolders.All(p => p.Type == ModType.Xnb))
-                {
-                    // if this isn't the root, and all subfolders are XNB mods, treat the whole folder as one XNB mod
-                    yield return new ModFolder(folder, folder, ModType.Xnb, null, subfolders[0].ManifestParseError);
-                }
-                else
-                {
-                    foreach (ModFolder subfolder in subfolders)
-                        yield return subfolder;
-                }
+                IEnumerable<ModFolder> subfolders = folder.EnumerateDirectories().SelectMany(sub => this.GetModFolders(root, sub));
+                if (!isRoot)
+                    subfolders = this.TryConsolidate(root, folder, subfolders.ToArray());
+                foreach (ModFolder subfolder in subfolders)
+                    yield return subfolder;
             }
 
             // treat as mod folder
             else
                 yield return this.ReadFolder(root, folder);
+        }
+
+        /// <summary>Consolidate adjacent folders into one mod folder, if possible.</summary>
+        /// <param name="root">The folder containing both parent and subfolders.</param>
+        /// <param name="parentFolder">The parent folder to consolidate, if possible.</param>
+        /// <param name="subfolders">The subfolders to consolidate, if possible.</param>
+        private IEnumerable<ModFolder> TryConsolidate(DirectoryInfo root, DirectoryInfo parentFolder, ModFolder[] subfolders)
+        {
+            if (subfolders.Length > 1)
+            {
+                // a collection of empty folders
+                if (subfolders.All(p => p.ManifestParseError == ModParseError.EmptyFolder))
+                    return new[] { new ModFolder(root, parentFolder, ModType.Invalid, null, ModParseError.EmptyFolder, subfolders[0].ManifestParseErrorText) };
+
+                // an XNB mod
+                if (subfolders.All(p => p.Type == ModType.Xnb || p.ManifestParseError == ModParseError.EmptyFolder))
+                    return new[] { new ModFolder(root, parentFolder, ModType.Xnb, null, ModParseError.XnbMod, subfolders[0].ManifestParseErrorText) };
+            }
+
+            return subfolders;
         }
 
         /// <summary>Find the manifest for a mod folder.</summary>
@@ -193,11 +234,41 @@ namespace StardewModdingAPI.Toolkit.Framework.ModScanning
             return subfolders.Any() && !files.Any();
         }
 
+        /// <summary>Recursively get all relevant files in a folder based on the result of <see cref="IsRelevant"/>.</summary>
+        /// <param name="folder">The root folder to search.</param>
+        private IEnumerable<FileInfo> RecursivelyGetRelevantFiles(DirectoryInfo folder)
+        {
+            foreach (FileSystemInfo entry in folder.GetFileSystemInfos())
+            {
+                if (!this.IsRelevant(entry))
+                    continue;
+
+                if (entry is FileInfo file)
+                    yield return file;
+
+                if (entry is DirectoryInfo subfolder)
+                {
+                    foreach (FileInfo subfolderFile in this.RecursivelyGetRelevantFiles(subfolder))
+                        yield return subfolderFile;
+                }
+            }
+        }
+
         /// <summary>Get whether a file or folder is relevant when deciding how to process a mod folder.</summary>
         /// <param name="entry">The file or folder.</param>
         private bool IsRelevant(FileSystemInfo entry)
         {
-            return !this.IgnoreFilesystemEntries.Contains(entry.Name);
+            return !this.IgnoreFilesystemEntries.Any(p => p.IsMatch(entry.Name));
+        }
+
+        /// <summary>Get whether a file is potentially part of an XNB mod.</summary>
+        /// <param name="entry">The file.</param>
+        private bool IsPotentialXnbFile(FileInfo entry)
+        {
+            if (!this.IsRelevant(entry))
+                return true;
+
+            return this.PotentialXnbModExtensions.Contains(entry.Extension); // use EndsWith to handle cases like image..png
         }
 
         /// <summary>Strip newlines from a string.</summary>
