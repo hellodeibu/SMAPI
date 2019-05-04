@@ -7,6 +7,7 @@
     <DocumentationFile>..\..\bin\$(Configuration)\SMAPI.Toolkit\$(TargetFramework)\SMAPI.Toolkit.xml</DocumentationFile>
     <LangVersion>latest</LangVersion>
     <PlatformTarget Condition="'$(TargetFramework)' == 'net4.5'">x86</PlatformTarget>
+    <RootNamespace>StardewModdingAPI.Toolkit</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
