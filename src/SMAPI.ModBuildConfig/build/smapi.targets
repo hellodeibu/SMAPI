@@ -2,7 +2,7 @@
   <!--*********************************************
   ** Import build tasks
   **********************************************-->
-  <UsingTask TaskName="DeployModTask" AssemblyFile="StardewModdingAPI.ModBuildConfig.dll" />
+  <UsingTask TaskName="DeployModTask" AssemblyFile="SMAPI.ModBuildConfig.dll" />
 
   <!--*********************************************
   ** Find the basic mod metadata
@@ -95,20 +95,25 @@
           <Private>false</Private>
           <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
         </Reference>
+        <Reference Include="StardewValley.GameData">
+          <HintPath>$(GamePath)\StardewValley.GameData.dll</HintPath>
+          <Private>false</Private>
+          <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
+        </Reference>
         <Reference Include="StardewModdingAPI">
           <HintPath>$(GamePath)\StardewModdingAPI.exe</HintPath>
           <Private>false</Private>
           <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
         </Reference>
-        <Reference Include="StardewModdingAPI.Toolkit.CoreInterfaces">
-          <HintPath>$(GamePath)\smapi-internal\StardewModdingAPI.Toolkit.CoreInterfaces.dll</HintPath>
+        <Reference Include="SMAPI.Toolkit.CoreInterfaces">
+          <HintPath>$(GamePath)\smapi-internal\SMAPI.Toolkit.CoreInterfaces.dll</HintPath>
           <Private>false</Private>
           <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
         </Reference>
         <Reference Include="xTile, Version=2.0.4.0, Culture=neutral, processorArchitecture=x86">
           <HintPath>$(GamePath)\xTile.dll</HintPath>
           <Private>false</Private>
-          <SpecificVersion>False</SpecificVersion>
+          <SpecificVersion>false</SpecificVersion>
           <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
         </Reference>
       </ItemGroup>
@@ -126,11 +131,16 @@
         <Reference Include="MonoGame.Framework">
           <HintPath>$(GamePath)\MonoGame.Framework.dll</HintPath>
           <Private>false</Private>
-          <SpecificVersion>False</SpecificVersion>
+          <SpecificVersion>false</SpecificVersion>
           <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
         </Reference>
         <Reference Include="StardewValley">
           <HintPath>$(GamePath)\StardewValley.exe</HintPath>
+          <Private>false</Private>
+          <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
+        </Reference>
+        <Reference Include="StardewValley.GameData.MonoGame">
+          <HintPath>$(GamePath)\StardewValley.GameData.MonoGame.dll</HintPath>
           <Private>false</Private>
           <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
         </Reference>
@@ -139,8 +149,8 @@
           <Private>false</Private>
           <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
         </Reference>
-        <Reference Include="StardewModdingAPI.Toolkit.CoreInterfaces">
-          <HintPath>$(GamePath)\smapi-internal\StardewModdingAPI.Toolkit.CoreInterfaces.dll</HintPath>
+        <Reference Include="SMAPI.Toolkit.CoreInterfaces">
+          <HintPath>$(GamePath)\smapi-internal\SMAPI.Toolkit.CoreInterfaces.dll</HintPath>
           <Private>false</Private>
           <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
         </Reference>

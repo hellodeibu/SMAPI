@@ -28,6 +28,12 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <summary>A lookup which indicates whether the asset is localisable (i.e. the filename contains the locale), if previously loaded.</summary>
         private readonly IDictionary<string, bool> IsLocalisableLookup;
 
+        /// <summary>Whether the next load is the first for any game content manager.</summary>
+        private static bool IsFirstLoad = true;
+
+        /// <summary>A callback to invoke the first time *any* game content manager loads an asset.</summary>
+        private readonly Action OnLoadingFirstAsset;
+
 
         /*********
         ** Public methods
@@ -41,10 +47,12 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <param name="monitor">Encapsulates monitoring and logging.</param>
         /// <param name="reflection">Simplifies access to private code.</param>
         /// <param name="onDisposing">A callback to invoke when the content manager is being disposed.</param>
-        public GameContentManager(string name, IServiceProvider serviceProvider, string rootDirectory, CultureInfo currentCulture, ContentCoordinator coordinator, IMonitor monitor, Reflector reflection, Action<BaseContentManager> onDisposing)
+        /// <param name="onLoadingFirstAsset">A callback to invoke the first time *any* game content manager loads an asset.</param>
+        public GameContentManager(string name, IServiceProvider serviceProvider, string rootDirectory, CultureInfo currentCulture, ContentCoordinator coordinator, IMonitor monitor, Reflector reflection, Action<BaseContentManager> onDisposing, Action onLoadingFirstAsset)
             : base(name, serviceProvider, rootDirectory, currentCulture, coordinator, monitor, reflection, onDisposing, isModFolder: false)
         {
             this.IsLocalisableLookup = reflection.GetField<IDictionary<string, bool>>(this, "_localizedAsset").GetValue();
+            this.OnLoadingFirstAsset = onLoadingFirstAsset;
         }
 
         /// <summary>Load an asset that has been processed by the content pipeline.</summary>
@@ -53,6 +61,13 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <param name="language">The language code for which to load content.</param>
         public override T Load<T>(string assetName, LanguageCode language)
         {
+            // raise first-load callback
+            if (GameContentManager.IsFirstLoad)
+            {
+                GameContentManager.IsFirstLoad = false;
+                this.OnLoadingFirstAsset();
+            }
+
             // normalise asset name
             assetName = this.AssertAndNormaliseAssetName(assetName);
             if (this.TryParseExplicitLanguageAssetKey(assetName, out string newAssetName, out LanguageCode newLanguage))
@@ -66,7 +81,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
             if (this.Coordinator.TryParseManagedAssetKey(assetName, out string contentManagerID, out string relativePath))
             {
                 T managedAsset = this.Coordinator.LoadAndCloneManagedAsset<T>(assetName, contentManagerID, relativePath, language);
-                this.Inject(assetName, managedAsset);
+                this.Inject(assetName, managedAsset, language);
                 return managedAsset;
             }
 
@@ -93,8 +108,51 @@ namespace StardewModdingAPI.Framework.ContentManagers
             }
 
             // update cache & return data
-            this.Inject(assetName, data);
+            this.Inject(assetName, data, language);
             return data;
+        }
+
+        /// <summary>Inject an asset into the cache.</summary>
+        /// <typeparam name="T">The type of asset to inject.</typeparam>
+        /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
+        /// <param name="value">The asset value.</param>
+        /// <param name="language">The language code for which to inject the asset.</param>
+        public override void Inject<T>(string assetName, T value, LanguageCode language)
+        {
+            base.Inject(assetName, value, language);
+
+            // track whether the injected asset is translatable for is-loaded lookups
+            bool isTranslated = this.TryParseExplicitLanguageAssetKey(assetName, out _, out _);
+            string localisedKey = isTranslated ? assetName : $"{assetName}.{language}";
+            if (this.Cache.ContainsKey(localisedKey))
+                this.IsLocalisableLookup[localisedKey] = true;
+            else if (!isTranslated && this.Cache.ContainsKey(assetName))
+                this.IsLocalisableLookup[localisedKey] = false;
+            else
+                this.Monitor.Log($"Asset '{assetName}' could not be found in the cache immediately after injection.", LogLevel.Error);
+        }
+
+        /// <summary>Perform any cleanup needed when the locale changes.</summary>
+        public override void OnLocaleChanged()
+        {
+            base.OnLocaleChanged();
+
+            // find assets for which a translatable version was loaded
+            HashSet<string> removeAssetNames = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
+            foreach (string key in this.IsLocalisableLookup.Where(p => p.Value).Select(p => p.Key))
+                removeAssetNames.Add(this.TryParseExplicitLanguageAssetKey(key, out string assetName, out _) ? assetName : key);
+
+            // invalidate translatable assets
+            string[] invalidated = this
+                .InvalidateCache((key, type) =>
+                    removeAssetNames.Contains(key)
+                    || (this.TryParseExplicitLanguageAssetKey(key, out string assetName, out _) && removeAssetNames.Contains(assetName))
+                )
+                .Select(p => p.Item1)
+                .OrderBy(p => p, StringComparer.InvariantCultureIgnoreCase)
+                .ToArray();
+            if (invalidated.Any())
+                this.Monitor.Log($"Invalidated {invalidated.Length} asset names: {string.Join(", ", invalidated)} for locale change.", LogLevel.Trace);
         }
 
         /// <summary>Create a new content manager for temporary use.</summary>
@@ -116,11 +174,11 @@ namespace StardewModdingAPI.Framework.ContentManagers
                 return this.Cache.ContainsKey(normalisedAssetName);
 
             // translated
-            string localeKey = $"{normalisedAssetName}.{this.GetLocale(this.GetCurrentLanguage())}";
-            if (this.IsLocalisableLookup.TryGetValue(localeKey, out bool localisable))
+            string localisedKey = $"{normalisedAssetName}.{this.GetLocale(this.GetCurrentLanguage())}";
+            if (this.IsLocalisableLookup.TryGetValue(localisedKey, out bool localisable))
             {
                 return localisable
-                    ? this.Cache.ContainsKey(localeKey)
+                    ? this.Cache.ContainsKey(localisedKey)
                     : this.Cache.ContainsKey(normalisedAssetName);
             }
 
