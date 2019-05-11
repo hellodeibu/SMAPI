@@ -717,10 +717,13 @@ namespace StardewModdingAPI.Framework
                         // raise player events
                         this.RaiseFarmerEvents(this.Watchers.CurrentPlayerTracker);
 
-                        // raise farmer events
-                        foreach (KeyValuePair<long, PlayerTracker> f in this.Watchers.OtherPlayerTrackers)
+                        // raise farmhand events, only if this is the host
+                        if (Context.IsMultiplayer && Context.IsMainPlayer)
                         {
-                            this.RaiseFarmerEvents(f.Value);
+                            foreach (KeyValuePair<long, PlayerTracker> f in this.Watchers.OtherPlayerTrackers)
+                            {
+                                this.RaiseFarmerEvents(f.Value);
+                            }
                         }
                     }
 
