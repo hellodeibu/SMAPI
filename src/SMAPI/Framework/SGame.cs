@@ -774,7 +774,7 @@ namespace StardewModdingAPI.Framework
                 }
 
                 // preloaded
-                if (Context.IsSaveLoaded && Context.LoadStage != LoadStage.Loaded && Context.LoadStage != LoadStage.Ready)
+                if (Context.IsSaveLoaded && Context.LoadStage != LoadStage.Loaded && Context.LoadStage != LoadStage.Ready && Game1.dayOfMonth != 0)
                     this.OnLoadStageChanged(LoadStage.Loaded);
 
                 // update tick
