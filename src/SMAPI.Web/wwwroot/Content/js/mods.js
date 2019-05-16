@@ -87,8 +87,6 @@ smapi.modList = function (mods, enableBeta) {
     else
         delete data.filters.betaStatus;
 
-    window.boop = data.filters;
-
     // init mods
     for (var i = 0; i < data.mods.length; i++) {
         var mod = mods[i];
@@ -188,6 +186,10 @@ smapi.modList = function (mods, enableBeta) {
             matchesFilters: function(mod, searchWords) {
                 var filters = data.filters;
 
+                // check hash
+                if (location.hash === "#" + mod.Slug)
+                    return true;
+
                 // check source
                 if (!filters.source.value.open.value && mod.SourceUrl)
                     return false;
@@ -281,4 +283,7 @@ smapi.modList = function (mods, enableBeta) {
         }
     });
     app.applyFilters();
+    window.addEventListener("hashchange", function () {
+        app.applyFilters();
+    });
 };

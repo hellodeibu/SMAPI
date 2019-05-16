@@ -19,6 +19,9 @@ These changes have not been released yet.
   * Fixed errors during early startup not shown before exit.
   * Fixed some assets not updated when you switch language to English.
 
+* For the web UI:
+  * When filtering the mod list, clicking a mod link now automatically adds it to the visible mods.
+
 * For modders:
   * Added support for content pack translations.
   * Added `IContentPack.HasFile` method.
