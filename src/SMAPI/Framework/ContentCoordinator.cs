@@ -258,14 +258,7 @@ namespace StardewModdingAPI.Framework
             }
 
             // reload core game assets
-            int reloaded = 0;
-            foreach (var pair in removedAssetNames)
-            {
-                string key = pair.Key;
-                Type type = pair.Value;
-                if (this.CoreAssets.Propagate(this.MainContentManager, key, type)) // use an intercepted content manager
-                    reloaded++;
-            }
+            int reloaded = this.CoreAssets.Propagate(this.MainContentManager, removedAssetNames); // use an intercepted content manager
 
             // report result
             if (removedAssetNames.Any())
