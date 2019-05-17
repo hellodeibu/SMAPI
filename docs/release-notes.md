@@ -1,4 +1,5 @@
 # Release notes
+
 ## 3.0 (upcoming release)
 These changes have not been released yet.
 
@@ -13,6 +14,13 @@ These changes have not been released yet.
   * `this.Monitor.Log` now defaults to the `Trace` log level instead of `Debug`.
   * Dropped support for all deprecated APIs.
   * Updated to Json.NET 12.0.1.
+
+## 2.11.2
+Released 22 April 2019 for Stardew Valley 1.3.36.
+
+* For players:
+  * Fixed error when a custom map references certain vanilla tilesheets on MacOS.
+  * Fixed compatibility with Arch Linux.
 
 ## 2.11.1
 Released 17 March 2019 for Stardew Valley 1.3.36.
