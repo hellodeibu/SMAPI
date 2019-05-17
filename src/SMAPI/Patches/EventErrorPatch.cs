@@ -7,7 +7,7 @@ using StardewValley;
 namespace StardewModdingAPI.Patches
 {
     /// <summary>A Harmony patch for the <see cref="Dialogue"/> constructor which intercepts invalid dialogue lines and logs an error instead of crashing.</summary>
-    internal class CheckEventPreconditionErrorPatch : IHarmonyPatch
+    internal class EventErrorPatch : IHarmonyPatch
     {
         /*********
         ** Fields
@@ -23,7 +23,7 @@ namespace StardewModdingAPI.Patches
         ** Accessors
         *********/
         /// <summary>A unique name for this patch.</summary>
-        public string Name => $"{nameof(CheckEventPreconditionErrorPatch)}";
+        public string Name => $"{nameof(EventErrorPatch)}";
 
 
         /*********
@@ -31,9 +31,9 @@ namespace StardewModdingAPI.Patches
         *********/
         /// <summary>Construct an instance.</summary>
         /// <param name="monitorForGame">Writes messages to the console and log file on behalf of the game.</param>
-        public CheckEventPreconditionErrorPatch(IMonitor monitorForGame)
+        public EventErrorPatch(IMonitor monitorForGame)
         {
-            CheckEventPreconditionErrorPatch.MonitorForGame = monitorForGame;
+            EventErrorPatch.MonitorForGame = monitorForGame;
         }
 
         /// <summary>Apply the Harmony patch.</summary>
@@ -42,7 +42,7 @@ namespace StardewModdingAPI.Patches
         {
             harmony.Patch(
                 original: AccessTools.Method(typeof(GameLocation), "checkEventPrecondition"),
-                prefix: new HarmonyMethod(this.GetType(), nameof(CheckEventPreconditionErrorPatch.Prefix))
+                prefix: new HarmonyMethod(this.GetType(), nameof(EventErrorPatch.Prefix))
             );
         }
 
@@ -60,24 +60,24 @@ namespace StardewModdingAPI.Patches
         [SuppressMessage("ReSharper", "InconsistentNaming", Justification = "Argument names are defined by Harmony.")]
         private static bool Prefix(GameLocation __instance, ref int __result, string precondition, MethodInfo __originalMethod)
         {
-            if (CheckEventPreconditionErrorPatch.IsIntercepted)
+            if (EventErrorPatch.IsIntercepted)
                 return true;
 
             try
             {
-                CheckEventPreconditionErrorPatch.IsIntercepted = true;
+                EventErrorPatch.IsIntercepted = true;
                 __result = (int)__originalMethod.Invoke(__instance, new object[] { precondition });
                 return false;
             }
             catch (TargetInvocationException ex)
             {
                 __result = -1;
-                CheckEventPreconditionErrorPatch.MonitorForGame.Log($"Failed parsing event precondition ({precondition}):\n{ex.InnerException}", LogLevel.Error);
+                EventErrorPatch.MonitorForGame.Log($"Failed parsing event precondition ({precondition}):\n{ex.InnerException}", LogLevel.Error);
                 return false;
             }
             finally
             {
-                CheckEventPreconditionErrorPatch.IsIntercepted = false;
+                EventErrorPatch.IsIntercepted = false;
             }
         }
     }

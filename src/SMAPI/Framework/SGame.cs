@@ -617,8 +617,8 @@ namespace StardewModdingAPI.Framework
 
                             if (this.Monitor.IsVerbose)
                             {
-                                string addedText = this.Watchers.LocationsWatcher.Added.Any() ? string.Join(", ", added.Select(p => p.Name)) : "none";
-                                string removedText = this.Watchers.LocationsWatcher.Removed.Any() ? string.Join(", ", removed.Select(p => p.Name)) : "none";
+                                string addedText = added.Any() ? string.Join(", ", added.Select(p => p.Name)) : "none";
+                                string removedText = removed.Any() ? string.Join(", ", removed.Select(p => p.Name)) : "none";
                                 this.Monitor.Log($"Context: location list changed (added {addedText}; removed {removedText}).", LogLevel.Trace);
                             }
 
@@ -774,7 +774,7 @@ namespace StardewModdingAPI.Framework
                 }
 
                 // preloaded
-                if (Context.IsSaveLoaded && Context.LoadStage != LoadStage.Loaded && Context.LoadStage != LoadStage.Ready)
+                if (Context.IsSaveLoaded && Context.LoadStage != LoadStage.Loaded && Context.LoadStage != LoadStage.Ready && Game1.dayOfMonth != 0)
                     this.OnLoadStageChanged(LoadStage.Loaded);
 
                 // update tick

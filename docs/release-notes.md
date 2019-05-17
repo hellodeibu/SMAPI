@@ -18,6 +18,10 @@ These changes have not been released yet.
   * Fixed 'received message' logs shown in non-developer mode.
   * Fixed errors during early startup not shown before exit.
   * Fixed some assets not updated when you switch language to English.
+  * Fixed lag in some cases due to incorrect asset caching when playing in non-English.
+
+* For the web UI:
+  * When filtering the mod list, clicking a mod link now automatically adds it to the visible mods.
 
 * For modders:
   * Added support for content pack translations.
@@ -29,6 +33,8 @@ These changes have not been released yet.
   * Removed all deprecated APIs.
   * Removed the `Monitor.ExitGameImmediately` method.
   * Updated to Json.NET 12.0.1.
+  * Fixed `LoadStageChanged` event not raising correct flags in some cases when creating a new save.
+  * Fixed 'location list changed' verbose log not correctly listing changes.
 
 ## 2.11.2
 Released 23 April 2019 for Stardew Valley 1.3.36.

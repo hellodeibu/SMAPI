@@ -229,10 +229,10 @@ namespace StardewModdingAPI.Framework
 
                 // apply game patches
                 new GamePatcher(this.Monitor).Apply(
-                    new CheckEventPreconditionErrorPatch(this.MonitorForGame),
+                    new EventErrorPatch(this.MonitorForGame),
                     new DialogueErrorPatch(this.MonitorForGame, this.Reflection),
                     new ObjectErrorPatch(),
-                    new LoadForNewGamePatch(this.Reflection, this.GameInstance.OnLoadStageChanged)
+                    new LoadContextPatch(this.Reflection, this.GameInstance.OnLoadStageChanged)
                 );
 
                 // add exit handler

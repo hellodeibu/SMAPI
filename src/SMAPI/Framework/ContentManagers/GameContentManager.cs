@@ -119,15 +119,28 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <param name="language">The language code for which to inject the asset.</param>
         public override void Inject<T>(string assetName, T value, LanguageCode language)
         {
+            // handle explicit language in asset name
+            {
+                if (this.TryParseExplicitLanguageAssetKey(assetName, out string newAssetName, out LanguageCode newLanguage))
+                {
+                    this.Inject(newAssetName, value, newLanguage);
+                    return;
+                }
+            }
             base.Inject(assetName, value, language);
 
             // track whether the injected asset is translatable for is-loaded lookups
-            bool isTranslated = this.TryParseExplicitLanguageAssetKey(assetName, out _, out _);
-            string localisedKey = isTranslated ? assetName : $"{assetName}.{language}";
-            if (this.Cache.ContainsKey(localisedKey))
-                this.IsLocalisableLookup[localisedKey] = true;
-            else if (!isTranslated && this.Cache.ContainsKey(assetName))
-                this.IsLocalisableLookup[localisedKey] = false;
+            string keyWithLocale = $"{assetName}.{this.GetLocale(language)}";
+            if (this.Cache.ContainsKey(keyWithLocale))
+            {
+                this.IsLocalisableLookup[assetName] = true;
+                this.IsLocalisableLookup[keyWithLocale] = true;
+            }
+            else if (this.Cache.ContainsKey(assetName))
+            {
+                this.IsLocalisableLookup[assetName] = false;
+                this.IsLocalisableLookup[keyWithLocale] = false;
+            }
             else
                 this.Monitor.Log($"Asset '{assetName}' could not be found in the cache immediately after injection.", LogLevel.Error);
         }
@@ -174,11 +187,11 @@ namespace StardewModdingAPI.Framework.ContentManagers
                 return this.Cache.ContainsKey(normalisedAssetName);
 
             // translated
-            string localisedKey = $"{normalisedAssetName}.{this.GetLocale(this.GetCurrentLanguage())}";
-            if (this.IsLocalisableLookup.TryGetValue(localisedKey, out bool localisable))
+            string keyWithLocale = $"{normalisedAssetName}.{this.GetLocale(this.GetCurrentLanguage())}";
+            if (this.IsLocalisableLookup.TryGetValue(keyWithLocale, out bool localisable))
             {
                 return localisable
-                    ? this.Cache.ContainsKey(localisedKey)
+                    ? this.Cache.ContainsKey(keyWithLocale)
                     : this.Cache.ContainsKey(normalisedAssetName);
             }
 
@@ -190,6 +203,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <param name="rawAsset">The asset key to parse.</param>
         /// <param name="assetName">The asset name without the language code.</param>
         /// <param name="language">The language code removed from the asset name.</param>
+        /// <returns>Returns whether the asset key contains an explicit language and was successfully parsed.</returns>
         private bool TryParseExplicitLanguageAssetKey(string rawAsset, out string assetName, out LanguageCode language)
         {
             if (string.IsNullOrWhiteSpace(rawAsset))
