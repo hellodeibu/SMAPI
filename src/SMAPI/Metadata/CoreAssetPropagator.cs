@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI.Framework.Reflection;
 using StardewValley;
@@ -139,21 +138,9 @@ namespace StardewModdingAPI.Metadata
                 {
                     if (!string.IsNullOrWhiteSpace(location.mapPath.Value) && this.GetNormalisedPath(location.mapPath.Value) == key)
                     {
-                        // reload map data
-                        this.Reflection.GetMethod(location, "reloadMap").Invoke();
-                        this.Reflection.GetMethod(location, "updateWarps").Invoke();
-
-                        // reload doors
-                        {
-                            Type interiorDoorDictType = Type.GetType($"StardewValley.InteriorDoorDictionary, {Constants.GameAssemblyName}", throwOnError: true);
-                            ConstructorInfo constructor = interiorDoorDictType.GetConstructor(new[] { typeof(GameLocation) });
-                            if (constructor == null)
-                                throw new InvalidOperationException("Can't reset location doors: constructor not found for InteriorDoorDictionary type.");
-                            object instance = constructor.Invoke(new object[] { location });
-
-                            this.Reflection.GetField<object>(location, "interiorDoors").SetValue(instance);
-                        }
-
+                        location.reloadMap();
+                        location.updateWarps();
+                        this.Reflection.GetField<InteriorDoorDictionary>(location, nameof(location.interiorDoors)).SetValue(new InteriorDoorDictionary(location));
                         anyChanged = true;
                     }
                 }
@@ -371,21 +358,25 @@ namespace StardewModdingAPI.Metadata
                 ** Content\Minigames
                 ****/
                 case "minigames\\clouds": // TitleMenu
-                    if (Game1.activeClickableMenu is TitleMenu)
                     {
-                        reflection.GetField<Texture2D>(Game1.activeClickableMenu, "cloudsTexture").SetValue(content.Load<Texture2D>(key));
-                        return true;
+                        if (Game1.activeClickableMenu is TitleMenu titleMenu)
+                        {
+                            titleMenu.cloudsTexture = content.Load<Texture2D>(key);
+                            return true;
+                        }
                     }
                     return false;
 
                 case "minigames\\titlebuttons": // TitleMenu
-                    if (Game1.activeClickableMenu is TitleMenu titleMenu)
                     {
-                        Texture2D texture = content.Load<Texture2D>(key);
-                        reflection.GetField<Texture2D>(titleMenu, "titleButtonsTexture").SetValue(texture);
-                        foreach (TemporaryAnimatedSprite bird in reflection.GetField<List<TemporaryAnimatedSprite>>(titleMenu, "birds").GetValue())
-                            bird.texture = texture;
-                        return true;
+                        if (Game1.activeClickableMenu is TitleMenu titleMenu)
+                        {
+                            Texture2D texture = content.Load<Texture2D>(key);
+                            titleMenu.titleButtonsTexture = texture;
+                            foreach (TemporaryAnimatedSprite bird in titleMenu.birds)
+                                bird.texture = texture;
+                            return true;
+                        }
                     }
                     return false;
 
@@ -401,7 +392,7 @@ namespace StardewModdingAPI.Metadata
                     return true;
 
                 case "tilesheets\\bushes": // new Bush()
-                    reflection.GetField<Lazy<Texture2D>>(typeof(Bush), "texture").SetValue(new Lazy<Texture2D>(() => content.Load<Texture2D>(key)));
+                    Bush.texture = new Lazy<Texture2D>(() => content.Load<Texture2D>(key));
                     return true;
 
                 case "tilesheets\\craftables": // Game1.loadContent
@@ -581,7 +572,7 @@ namespace StardewModdingAPI.Metadata
 
             // update fence textures
             foreach (Fence fence in fences)
-                this.Reflection.GetField<Lazy<Texture2D>>(fence, "fenceTexture").SetValue(new Lazy<Texture2D>(fence.loadFenceTexture));
+                fence.fenceTexture = new Lazy<Texture2D>(fence.loadFenceTexture);
             return true;
         }
 
@@ -746,7 +737,7 @@ namespace StardewModdingAPI.Metadata
                 int lastScheduleTime = villager.Schedule.Keys.Where(p => p <= Game1.timeOfDay).OrderByDescending(p => p).FirstOrDefault();
                 if (lastScheduleTime != 0)
                 {
-                    this.Reflection.GetField<int>(villager, "scheduleTimeToTry").SetValue(this.Reflection.GetField<int>(typeof(NPC), "NO_TRY").GetValue()); // use time that's passed in to checkSchedule
+                    villager.scheduleTimeToTry = NPC.NO_TRY; // use time that's passed in to checkSchedule
                     villager.checkSchedule(lastScheduleTime);
                 }
             }
