@@ -139,6 +139,7 @@ namespace StardewModdingAPI.Metadata
                     if (!string.IsNullOrWhiteSpace(location.mapPath.Value) && this.GetNormalisedPath(location.mapPath.Value) == key)
                     {
                         location.reloadMap();
+                        location.updateSeasonalTileSheets();
                         location.updateWarps();
                         this.Reflection.GetField<InteriorDoorDictionary>(location, nameof(location.interiorDoors)).SetValue(new InteriorDoorDictionary(location));
                         anyChanged = true;
