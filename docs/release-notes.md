@@ -20,7 +20,8 @@ These changes have not been released yet.
   * Fixed some assets not updated when you switch language to English.
   * Fixed lag in some cases due to incorrect asset caching when playing in non-English.
   * Fixed lag when a mod invalidates many NPC portraits/sprites at once.
-  * Fixed seasonal tilesheet issues when a mod reloads a map.
+  * Fixed map reloads resetting tilesheet seasons.
+  * Fixed outdoor tilesheets being seasonalised when added to an indoor location.
 
 * For the web UI:
   * When filtering the mod list, clicking a mod link now automatically adds it to the visible mods.
