@@ -101,9 +101,21 @@ namespace StardewModdingAPI.Framework
         /// <summary>Get a new content manager which handles reading files from a SMAPI mod folder with support for unpacked files.</summary>
         /// <param name="name">A name for the mod manager. Not guaranteed to be unique.</param>
         /// <param name="rootDirectory">The root directory to search for content (or <c>null</c> for the default).</param>
-        public ModContentManager CreateModContentManager(string name, string rootDirectory)
+        /// <param name="gameContentManager">The game content manager used for map tilesheets not provided by the mod.</param>
+        public ModContentManager CreateModContentManager(string name, string rootDirectory, IContentManager gameContentManager)
         {
-            ModContentManager manager = new ModContentManager(name, this.MainContentManager.ServiceProvider, rootDirectory, this.MainContentManager.CurrentCulture, this, this.Monitor, this.Reflection, this.JsonHelper, this.OnDisposing);
+            ModContentManager manager = new ModContentManager(
+                name: name,
+                gameContentManager: gameContentManager,
+                serviceProvider: this.MainContentManager.ServiceProvider,
+                rootDirectory: rootDirectory,
+                currentCulture: this.MainContentManager.CurrentCulture,
+                coordinator: this,
+                monitor: this.Monitor,
+                reflection: this.Reflection,
+                jsonHelper: this.JsonHelper,
+                onDisposing: this.OnDisposing
+            );
             this.ContentManagers.Add(manager);
             return manager;
         }

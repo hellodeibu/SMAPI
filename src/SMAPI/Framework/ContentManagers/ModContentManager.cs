@@ -1,12 +1,19 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI.Framework.Exceptions;
 using StardewModdingAPI.Framework.Reflection;
 using StardewModdingAPI.Toolkit.Serialisation;
+using StardewModdingAPI.Toolkit.Utilities;
 using StardewValley;
+using xTile;
+using xTile.Format;
+using xTile.ObjectModel;
+using xTile.Tiles;
 
 namespace StardewModdingAPI.Framework.ContentManagers
 {
@@ -19,12 +26,16 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <summary>Encapsulates SMAPI's JSON file parsing.</summary>
         private readonly JsonHelper JsonHelper;
 
+        /// <summary>The game content manager used for map tilesheets not provided by the mod.</summary>
+        private readonly IContentManager GameContentManager;
+
 
         /*********
         ** Public methods
         *********/
         /// <summary>Construct an instance.</summary>
         /// <param name="name">A name for the mod manager. Not guaranteed to be unique.</param>
+        /// <param name="gameContentManager">The game content manager used for map tilesheets not provided by the mod.</param>
         /// <param name="serviceProvider">The service provider to use to locate services.</param>
         /// <param name="rootDirectory">The root directory to search for content.</param>
         /// <param name="currentCulture">The current culture for which to localise content.</param>
@@ -33,9 +44,10 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <param name="reflection">Simplifies access to private code.</param>
         /// <param name="jsonHelper">Encapsulates SMAPI's JSON file parsing.</param>
         /// <param name="onDisposing">A callback to invoke when the content manager is being disposed.</param>
-        public ModContentManager(string name, IServiceProvider serviceProvider, string rootDirectory, CultureInfo currentCulture, ContentCoordinator coordinator, IMonitor monitor, Reflector reflection, JsonHelper jsonHelper, Action<BaseContentManager> onDisposing)
+        public ModContentManager(string name, IContentManager gameContentManager, IServiceProvider serviceProvider, string rootDirectory, CultureInfo currentCulture, ContentCoordinator coordinator, IMonitor monitor, Reflector reflection, JsonHelper jsonHelper, Action<BaseContentManager> onDisposing)
             : base(name, serviceProvider, rootDirectory, currentCulture, coordinator, monitor, reflection, onDisposing, isModFolder: true)
         {
+            this.GameContentManager = gameContentManager;
             this.JsonHelper = jsonHelper;
         }
 
@@ -47,11 +59,9 @@ namespace StardewModdingAPI.Framework.ContentManagers
         {
             assetName = this.AssertAndNormaliseAssetName(assetName);
 
-            // get from cache
+            // get managed asset
             if (this.IsLoaded(assetName))
                 return base.Load<T>(assetName, language);
-
-            // get managed asset
             if (this.Coordinator.TryParseManagedAssetKey(assetName, out string contentManagerID, out string relativePath))
             {
                 if (contentManagerID != this.Name)
@@ -64,13 +74,27 @@ namespace StardewModdingAPI.Framework.ContentManagers
                 return this.LoadManagedAsset<T>(assetName, contentManagerID, relativePath, language);
             }
 
-            throw new NotSupportedException("Can't load content folder asset from a mod content manager.");
+            // get local asset
+            string internalKey = this.GetInternalAssetKey(assetName);
+            if (this.IsLoaded(internalKey))
+                return base.Load<T>(internalKey, language);
+            return this.LoadManagedAsset<T>(internalKey, this.Name, assetName, this.Language);
         }
 
         /// <summary>Create a new content manager for temporary use.</summary>
         public override LocalizedContentManager CreateTemporary()
         {
             throw new NotSupportedException("Can't create a temporary mod content manager.");
+        }
+
+        /// <summary>Get the underlying key in the game's content cache for an asset. This does not validate whether the asset exists.</summary>
+        /// <param name="key">The local path to a content file relative to the mod folder.</param>
+        /// <exception cref="ArgumentException">The <paramref name="key"/> is empty or contains invalid characters.</exception>
+        public string GetInternalAssetKey(string key)
+        {
+            FileInfo file = this.GetModFile(key);
+            string relativePath = PathUtilities.GetRelativePath(this.RootDirectory, file.FullName);
+            return Path.Combine(this.Name, relativePath);
         }
 
 
@@ -133,7 +157,18 @@ namespace StardewModdingAPI.Framework.ContentManagers
 
                     // unpacked map
                     case ".tbin":
-                        throw GetContentError($"can't read unpacked map file directly from the underlying content manager. It must be loaded through the mod's {typeof(IModHelper)}.{nameof(IModHelper.Content)} helper.");
+                        // validate
+                        if (typeof(T) != typeof(Map))
+                            throw GetContentError($"can't read file with extension '{file.Extension}' as type '{typeof(T)}'; must be type '{typeof(Map)}'.");
+
+                        // fetch & cache
+                        FormatManager formatManager = FormatManager.Instance;
+                        Map map = formatManager.LoadMap(file.FullName);
+                        this.FixCustomTilesheetPaths(map, relativeMapPath: relativePath);
+
+                        // inject map
+                        this.Inject(internalKey, map, this.Language);
+                        return (T)(object)map;
 
                     default:
                         throw GetContentError($"unknown file extension '{file.Extension}'; must be one of '.png', '.tbin', or '.xnb'.");
@@ -185,6 +220,144 @@ namespace StardewModdingAPI.Framework.ContentManagers
                 data[i] = Color.FromNonPremultiplied(data[i].ToVector4());
             texture.SetData(data);
             return texture;
+        }
+
+        /// <summary>Fix custom map tilesheet paths so they can be found by the content manager.</summary>
+        /// <param name="map">The map whose tilesheets to fix.</param>
+        /// <param name="relativeMapPath">The relative map path within the mod folder.</param>
+        /// <exception cref="ContentLoadException">A map tilesheet couldn't be resolved.</exception>
+        /// <remarks>
+        /// The game's logic for tilesheets in <see cref="Game1.setGraphicsForSeason"/> is a bit specialised. It boils
+        /// down to this:
+        ///  * If the location is indoors or the desert, or the image source contains 'path' or 'object', it's loaded
+        ///    as-is relative to the <c>Content</c> folder.
+        ///  * Else it's loaded from <c>Content\Maps</c> with a seasonal prefix.
+        /// 
+        /// That logic doesn't work well in our case, mainly because we have no location metadata at this point.
+        /// Instead we use a more heuristic approach: check relative to the map file first, then relative to
+        /// <c>Content\Maps</c>, then <c>Content</c>. If the image source filename contains a seasonal prefix, try for a
+        /// seasonal variation and then an exact match.
+        /// 
+        /// While that doesn't exactly match the game logic, it's close enough that it's unlikely to make a difference.
+        /// </remarks>
+        private void FixCustomTilesheetPaths(Map map, string relativeMapPath)
+        {
+            // get map info
+            if (!map.TileSheets.Any())
+                return;
+            relativeMapPath = this.AssertAndNormaliseAssetName(relativeMapPath); // Mono's Path.GetDirectoryName doesn't handle Windows dir separators
+            string relativeMapFolder = Path.GetDirectoryName(relativeMapPath) ?? ""; // folder path containing the map, relative to the mod folder
+            bool isOutdoors = map.Properties.TryGetValue("Outdoors", out PropertyValue outdoorsProperty) && outdoorsProperty != null;
+
+            // fix tilesheets
+            foreach (TileSheet tilesheet in map.TileSheets)
+            {
+                string imageSource = tilesheet.ImageSource;
+
+                // validate tilesheet path
+                if (Path.IsPathRooted(imageSource) || PathUtilities.GetSegments(imageSource).Contains(".."))
+                    throw new ContentLoadException($"The '{imageSource}' tilesheet couldn't be loaded. Tilesheet paths must be a relative path without directory climbing (../).");
+
+                // get seasonal name (if applicable)
+                string seasonalImageSource = null;
+                if (isOutdoors && Context.IsSaveLoaded && Game1.currentSeason != null)
+                {
+                    string filename = Path.GetFileName(imageSource) ?? throw new InvalidOperationException($"The '{imageSource}' tilesheet couldn't be loaded: filename is unexpectedly null.");
+                    bool hasSeasonalPrefix =
+                        filename.StartsWith("spring_", StringComparison.CurrentCultureIgnoreCase)
+                        || filename.StartsWith("summer_", StringComparison.CurrentCultureIgnoreCase)
+                        || filename.StartsWith("fall_", StringComparison.CurrentCultureIgnoreCase)
+                        || filename.StartsWith("winter_", StringComparison.CurrentCultureIgnoreCase);
+                    if (hasSeasonalPrefix && !filename.StartsWith(Game1.currentSeason + "_"))
+                    {
+                        string dirPath = imageSource.Substring(0, imageSource.LastIndexOf(filename, StringComparison.CurrentCultureIgnoreCase));
+                        seasonalImageSource = $"{dirPath}{Game1.currentSeason}_{filename.Substring(filename.IndexOf("_", StringComparison.CurrentCultureIgnoreCase) + 1)}";
+                    }
+                }
+
+                // load best match
+                try
+                {
+                    string key =
+                        this.GetTilesheetAssetName(relativeMapFolder, seasonalImageSource)
+                        ?? this.GetTilesheetAssetName(relativeMapFolder, imageSource);
+                    if (key != null)
+                    {
+                        tilesheet.ImageSource = key;
+                        continue;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new ContentLoadException($"The '{imageSource}' tilesheet couldn't be loaded relative to either map file or the game's content folder.", ex);
+                }
+
+                // none found
+                throw new ContentLoadException($"The '{imageSource}' tilesheet couldn't be loaded relative to either map file or the game's content folder.");
+            }
+        }
+
+        /// <summary>Get the actual asset name for a tilesheet.</summary>
+        /// <param name="modRelativeMapFolder">The folder path containing the map, relative to the mod folder.</param>
+        /// <param name="imageSource">The tilesheet image source to load.</param>
+        /// <returns>Returns the asset name.</returns>
+        /// <remarks>See remarks on <see cref="FixCustomTilesheetPaths"/>.</remarks>
+        private string GetTilesheetAssetName(string modRelativeMapFolder, string imageSource)
+        {
+            if (imageSource == null)
+                return null;
+
+            // check relative to map file
+            {
+                string localKey = Path.Combine(modRelativeMapFolder, imageSource);
+                FileInfo localFile = this.GetModFile(localKey);
+                if (localFile.Exists)
+                    return this.GetInternalAssetKey(localKey);
+            }
+
+            // check relative to content folder
+            {
+                foreach (string candidateKey in new[] { imageSource, Path.Combine("Maps", imageSource) })
+                {
+                    string contentKey = candidateKey.EndsWith(".png")
+                        ? candidateKey.Substring(0, candidateKey.Length - 4)
+                        : candidateKey;
+
+                    try
+                    {
+                        this.GameContentManager.Load<Texture2D>(contentKey);
+                        return contentKey;
+                    }
+                    catch
+                    {
+                        // ignore file-not-found errors
+                        // TODO: while it's useful to suppress an asset-not-found error here to avoid
+                        // confusion, this is a pretty naive approach. Even if the file doesn't exist,
+                        // the file may have been loaded through an IAssetLoader which failed. So even
+                        // if the content file doesn't exist, that doesn't mean the error here is a
+                        // content-not-found error. Unfortunately XNA doesn't provide a good way to
+                        // detect the error type.
+                        if (this.GetContentFolderFileExists(contentKey))
+                            throw;
+                    }
+                }
+            }
+
+            // not found
+            return null;
+        }
+
+        /// <summary>Get whether a file from the game's content folder exists.</summary>
+        /// <param name="key">The asset key.</param>
+        private bool GetContentFolderFileExists(string key)
+        {
+            // get file path
+            string path = Path.Combine(this.GameContentManager.FullRootDirectory, key);
+            if (!path.EndsWith(".xnb"))
+                path += ".xnb";
+
+            // get file
+            return new FileInfo(path).Exists;
         }
     }
 }
