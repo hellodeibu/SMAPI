@@ -65,11 +65,11 @@ else
     for terminal in "$TERMINAL" xterm x-terminal-emulator kitty terminator xfce4-terminal gnome-terminal konsole terminal termite; do
         if $COMMAND "$terminal" 2>/dev/null; then
             # Find the true shell behind x-terminal-emulator
-            if [ "$(basename "$(readlink -ef which "$terminal")")" != "x-terminal-emulator" ]; then
+            if [ "$(basename "$(readlink -f $(which "$terminal"))")" != "x-terminal-emulator" ]; then
                 export LAUNCHTERM=$terminal
                 break;
             else
-                export LAUNCHTERM="$(basename "$(readlink -ef which x-terminal-emulator)")"
+                export LAUNCHTERM="$(basename "$(readlink -f $(which x-terminal-emulator))")"
                 # Remember that we're using x-terminal-emulator just in case it points outside the $PATH
                 export XTE=1
                 break;
