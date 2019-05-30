@@ -22,8 +22,8 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <summary>The absolute path to the <see cref="ContentManager.RootDirectory"/>.</summary>
         string FullRootDirectory { get; }
 
-        /// <summary>Whether this content manager is for a mod folder.</summary>
-        bool IsModContentManager { get; }
+        /// <summary>Whether this content manager can be targeted by managed asset keys (e.g. to load assets from a mod folder).</summary>
+        bool IsNamespaced { get; }
 
 
         /*********

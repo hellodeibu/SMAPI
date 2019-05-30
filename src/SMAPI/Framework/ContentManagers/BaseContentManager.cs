@@ -51,8 +51,8 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <summary>The absolute path to the <see cref="ContentManager.RootDirectory"/>.</summary>
         public string FullRootDirectory => Path.Combine(Constants.ExecutionPath, this.RootDirectory);
 
-        /// <summary>Whether this content manager is for a mod folder.</summary>
-        public bool IsModContentManager { get; }
+        /// <summary>Whether this content manager can be targeted by managed asset keys (e.g. to load assets from a mod folder).</summary>
+        public bool IsNamespaced { get; }
 
 
         /*********
@@ -67,8 +67,8 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <param name="monitor">Encapsulates monitoring and logging.</param>
         /// <param name="reflection">Simplifies access to private code.</param>
         /// <param name="onDisposing">A callback to invoke when the content manager is being disposed.</param>
-        /// <param name="isModFolder">Whether this content manager is for a mod folder.</param>
-        protected BaseContentManager(string name, IServiceProvider serviceProvider, string rootDirectory, CultureInfo currentCulture, ContentCoordinator coordinator, IMonitor monitor, Reflector reflection, Action<BaseContentManager> onDisposing, bool isModFolder)
+        /// <param name="isNamespaced">Whether this content manager handles managed asset keys (e.g. to load assets from a mod folder).</param>
+        protected BaseContentManager(string name, IServiceProvider serviceProvider, string rootDirectory, CultureInfo currentCulture, ContentCoordinator coordinator, IMonitor monitor, Reflector reflection, Action<BaseContentManager> onDisposing, bool isNamespaced)
                 : base(serviceProvider, rootDirectory, currentCulture)
         {
             // init
@@ -77,7 +77,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
             this.Cache = new ContentCache(this, reflection);
             this.Monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
             this.OnDisposing = onDisposing;
-            this.IsModContentManager = isModFolder;
+            this.IsNamespaced = isNamespaced;
 
             // get asset data
             this.LanguageCodes = this.GetKeyLocales().ToDictionary(p => p.Value, p => p.Key, StringComparer.InvariantCultureIgnoreCase);

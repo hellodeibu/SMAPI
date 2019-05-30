@@ -179,7 +179,7 @@ namespace StardewModdingAPI.Framework
         public T LoadAndCloneManagedAsset<T>(string internalKey, string contentManagerID, string relativePath, LocalizedContentManager.LanguageCode language)
         {
             // get content manager
-            IContentManager contentManager = this.ContentManagers.FirstOrDefault(p => p.Name == contentManagerID);
+            IContentManager contentManager = this.ContentManagers.FirstOrDefault(p => p.IsNamespaced && p.Name == contentManagerID);
             if (contentManager == null)
                 throw new InvalidOperationException($"The '{contentManagerID}' prefix isn't handled by any mod.");
 
