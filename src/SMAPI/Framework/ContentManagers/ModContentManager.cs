@@ -29,6 +29,9 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <summary>The game content manager used for map tilesheets not provided by the mod.</summary>
         private readonly IContentManager GameContentManager;
 
+        /// <summary>The language code for language-agnostic mod assets.</summary>
+        private const LanguageCode NoLanguage = LanguageCode.en;
+
 
         /*********
         ** Public methods
@@ -54,24 +57,112 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <summary>Load an asset that has been processed by the content pipeline.</summary>
         /// <typeparam name="T">The type of asset to load.</typeparam>
         /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
+        public override T Load<T>(string assetName)
+        {
+            return this.Load<T>(assetName, ModContentManager.NoLanguage, useCache: false);
+        }
+
+        /// <summary>Load an asset that has been processed by the content pipeline.</summary>
+        /// <typeparam name="T">The type of asset to load.</typeparam>
+        /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
         /// <param name="language">The language code for which to load content.</param>
         public override T Load<T>(string assetName, LanguageCode language)
         {
+            return this.Load<T>(assetName, language, useCache: false);
+        }
+
+        /// <summary>Load an asset that has been processed by the content pipeline.</summary>
+        /// <typeparam name="T">The type of asset to load.</typeparam>
+        /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
+        /// <param name="language">The language code for which to load content.</param>
+        /// <param name="useCache">Whether to read/write the loaded asset to the asset cache.</param>
+        public override T Load<T>(string assetName, LanguageCode language, bool useCache)
+        {
             assetName = this.AssertAndNormaliseAssetName(assetName);
 
+            // disable caching
+            // This is necessary to avoid assets being shared between content managers, which can
+            // cause changes to an asset through one content manager affecting the same asset in
+            // others (or even fresh content managers). See https://www.patreon.com/posts/27247161
+            // for more background info.
+            if (useCache)
+                throw new InvalidOperationException("Mod content managers don't support asset caching.");
+
+            // disable language handling
+            // Mod files don't support automatic translation logic, so this should never happen.
+            if (language != ModContentManager.NoLanguage)
+                throw new InvalidOperationException("Caching is not supported by the mod content manager.");
+
             // resolve managed asset key
-            if (this.Coordinator.TryParseManagedAssetKey(assetName, out string contentManagerID, out string relativePath))
             {
-                if (contentManagerID != this.Name)
-                    throw new SContentLoadException($"Can't load managed asset key '{assetName}' through content manager '{this.Name}' for a different mod.");
-                assetName = relativePath;
+                if (this.Coordinator.TryParseManagedAssetKey(assetName, out string contentManagerID, out string relativePath))
+                {
+                    if (contentManagerID != this.Name)
+                        throw new SContentLoadException($"Can't load managed asset key '{assetName}' through content manager '{this.Name}' for a different mod.");
+                    assetName = relativePath;
+                }
             }
 
             // get local asset
-            string internalKey = this.GetInternalAssetKey(assetName);
-            if (this.IsLoaded(internalKey))
-                return base.Load<T>(internalKey, language);
-            return this.LoadImpl<T>(internalKey, this.Name, assetName, this.Language);
+            SContentLoadException GetContentError(string reasonPhrase) => new SContentLoadException($"Failed loading asset '{assetName}' from {this.Name}: {reasonPhrase}");
+            try
+            {
+                // get file
+                FileInfo file = this.GetModFile(assetName);
+                if (!file.Exists)
+                    throw GetContentError("the specified path doesn't exist.");
+
+                // load content
+                switch (file.Extension.ToLower())
+                {
+                    // XNB file
+                    case ".xnb":
+                        return this.RawLoad<T>(assetName, useCache: false);
+
+                    // unpacked data
+                    case ".json":
+                        {
+                            if (!this.JsonHelper.ReadJsonFileIfExists(file.FullName, out T data))
+                                throw GetContentError("the JSON file is invalid."); // should never happen since we check for file existence above
+                            return data;
+                        }
+
+                    // unpacked image
+                    case ".png":
+                        // validate
+                        if (typeof(T) != typeof(Texture2D))
+                            throw GetContentError($"can't read file with extension '{file.Extension}' as type '{typeof(T)}'; must be type '{typeof(Texture2D)}'.");
+
+                        // fetch & cache
+                        using (FileStream stream = File.OpenRead(file.FullName))
+                        {
+                            Texture2D texture = Texture2D.FromStream(Game1.graphics.GraphicsDevice, stream);
+                            texture = this.PremultiplyTransparency(texture);
+                            return (T)(object)texture;
+                        }
+
+                    // unpacked map
+                    case ".tbin":
+                        // validate
+                        if (typeof(T) != typeof(Map))
+                            throw GetContentError($"can't read file with extension '{file.Extension}' as type '{typeof(T)}'; must be type '{typeof(Map)}'.");
+
+                        // fetch & cache
+                        FormatManager formatManager = FormatManager.Instance;
+                        Map map = formatManager.LoadMap(file.FullName);
+                        this.FixCustomTilesheetPaths(map, relativeMapPath: assetName);
+                        return (T)(object)map;
+
+                    default:
+                        throw GetContentError($"unknown file extension '{file.Extension}'; must be one of '.png', '.tbin', or '.xnb'.");
+                }
+            }
+            catch (Exception ex) when (!(ex is SContentLoadException))
+            {
+                if (ex.GetInnermostException() is DllNotFoundException dllEx && dllEx.Message == "libgdiplus.dylib")
+                    throw GetContentError("couldn't find libgdiplus, which is needed to load mod images. Make sure Mono is installed and you're running the game through the normal launcher.");
+                throw new SContentLoadException($"The content manager failed loading content asset '{assetName}' from {this.Name}.", ex);
+            }
         }
 
         /// <summary>Create a new content manager for temporary use.</summary>
@@ -99,80 +190,6 @@ namespace StardewModdingAPI.Framework.ContentManagers
         protected override bool IsNormalisedKeyLoaded(string normalisedAssetName)
         {
             return this.Cache.ContainsKey(normalisedAssetName);
-        }
-
-        /// <summary>Load a local mod asset.</summary>
-        /// <typeparam name="T">The type of asset to load.</typeparam>
-        /// <param name="cacheKey">The mod asset cache key to save.</param>
-        /// <param name="contentManagerID">The unique name for the content manager which should load this asset.</param>
-        /// <param name="relativePath">The relative path within the mod folder.</param>
-        /// <param name="language">The language code for which to load content.</param>
-        private T LoadImpl<T>(string cacheKey, string contentManagerID, string relativePath, LanguageCode language)
-        {
-            SContentLoadException GetContentError(string reasonPhrase) => new SContentLoadException($"Failed loading asset '{relativePath}' from {contentManagerID}: {reasonPhrase}");
-            try
-            {
-                // get file
-                FileInfo file = this.GetModFile(relativePath);
-                if (!file.Exists)
-                    throw GetContentError("the specified path doesn't exist.");
-
-                // load content
-                switch (file.Extension.ToLower())
-                {
-                    // XNB file
-                    case ".xnb":
-                        return base.Load<T>(relativePath, language);
-
-                    // unpacked data
-                    case ".json":
-                        {
-                            if (!this.JsonHelper.ReadJsonFileIfExists(file.FullName, out T data))
-                                throw GetContentError("the JSON file is invalid."); // should never happen since we check for file existence above
-
-                            return data;
-                        }
-
-                    // unpacked image
-                    case ".png":
-                        // validate
-                        if (typeof(T) != typeof(Texture2D))
-                            throw GetContentError($"can't read file with extension '{file.Extension}' as type '{typeof(T)}'; must be type '{typeof(Texture2D)}'.");
-
-                        // fetch & cache
-                        using (FileStream stream = File.OpenRead(file.FullName))
-                        {
-                            Texture2D texture = Texture2D.FromStream(Game1.graphics.GraphicsDevice, stream);
-                            texture = this.PremultiplyTransparency(texture);
-                            this.Inject(cacheKey, texture, language);
-                            return (T)(object)texture;
-                        }
-
-                    // unpacked map
-                    case ".tbin":
-                        // validate
-                        if (typeof(T) != typeof(Map))
-                            throw GetContentError($"can't read file with extension '{file.Extension}' as type '{typeof(T)}'; must be type '{typeof(Map)}'.");
-
-                        // fetch & cache
-                        FormatManager formatManager = FormatManager.Instance;
-                        Map map = formatManager.LoadMap(file.FullName);
-                        this.FixCustomTilesheetPaths(map, relativeMapPath: relativePath);
-
-                        // inject map
-                        this.Inject(cacheKey, map, this.Language);
-                        return (T)(object)map;
-
-                    default:
-                        throw GetContentError($"unknown file extension '{file.Extension}'; must be one of '.png', '.tbin', or '.xnb'.");
-                }
-            }
-            catch (Exception ex) when (!(ex is SContentLoadException))
-            {
-                if (ex.GetInnermostException() is DllNotFoundException dllEx && dllEx.Message == "libgdiplus.dylib")
-                    throw GetContentError("couldn't find libgdiplus, which is needed to load mod images. Make sure Mono is installed and you're running the game through the normal launcher.");
-                throw new SContentLoadException($"The content manager failed loading content asset '{relativePath}' from {contentManagerID}.", ex);
-            }
         }
 
         /// <summary>Get a file from the mod folder.</summary>
@@ -318,7 +335,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
 
                     try
                     {
-                        this.GameContentManager.Load<Texture2D>(contentKey);
+                        this.GameContentManager.Load<Texture2D>(contentKey, this.Language, useCache: true); // no need to bypass cache here, since we're not storing the asset
                         return contentKey;
                     }
                     catch

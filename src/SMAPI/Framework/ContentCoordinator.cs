@@ -176,16 +176,15 @@ namespace StardewModdingAPI.Framework
         /// <param name="contentManagerID">The unique name for the content manager which should load this asset.</param>
         /// <param name="relativePath">The internal SMAPI asset key.</param>
         /// <param name="language">The language code for which to load content.</param>
-        public T LoadAndCloneManagedAsset<T>(string internalKey, string contentManagerID, string relativePath, LocalizedContentManager.LanguageCode language)
+        public T LoadManagedAsset<T>(string internalKey, string contentManagerID, string relativePath, LocalizedContentManager.LanguageCode language)
         {
             // get content manager
             IContentManager contentManager = this.ContentManagers.FirstOrDefault(p => p.IsNamespaced && p.Name == contentManagerID);
             if (contentManager == null)
                 throw new InvalidOperationException($"The '{contentManagerID}' prefix isn't handled by any mod.");
 
-            // get cloned asset
-            T data = contentManager.Load<T>(internalKey, language);
-            return contentManager.CloneIfPossible(data);
+            // get fresh asset
+            return contentManager.Load<T>(relativePath, language, useCache: false);
         }
 
         /// <summary>Purge assets from the cache that match one of the interceptors.</summary>

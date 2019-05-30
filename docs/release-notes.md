@@ -23,7 +23,6 @@ These changes have not been released yet.
   * Fixed lag when a mod invalidates many NPC portraits/sprites at once.
   * Fixed map reloads resetting tilesheet seasons.
   * Fixed outdoor tilesheets being seasonalised when added to an indoor location.
-  * Fixed mods able to directly load (and in some cases edit) a different mod's local assets using internal asset key forwarding.
 
 * For the web UI:
   * When filtering the mod list, clicking a mod link now automatically adds it to the visible mods.
@@ -41,6 +40,8 @@ These changes have not been released yet.
   * Updated to Json.NET 12.0.1.
   * Fixed `LoadStageChanged` event not raising correct flags in some cases when creating a new save.
   * Fixed 'location list changed' verbose log not correctly listing changes.
+  * Fixed mods able to directly load (and in some cases edit) a different mod's local assets using internal asset key forwarding.
+  * Fixed changes to a map loaded by a mod being persisted across content managers.
 
 ## 2.11.2
 Released 23 April 2019 for Stardew Valley 1.3.36.

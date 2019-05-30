@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Microsoft.Xna.Framework.Content;
 using StardewModdingAPI.Framework.Content;
 using StardewModdingAPI.Framework.Exceptions;
 using StardewModdingAPI.Framework.Reflection;
@@ -59,7 +60,8 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <typeparam name="T">The type of asset to load.</typeparam>
         /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
         /// <param name="language">The language code for which to load content.</param>
-        public override T Load<T>(string assetName, LanguageCode language)
+        /// <param name="useCache">Whether to read/write the loaded asset to the asset cache.</param>
+        public override T Load<T>(string assetName, LocalizedContentManager.LanguageCode language, bool useCache)
         {
             // raise first-load callback
             if (GameContentManager.IsFirstLoad)
@@ -71,17 +73,18 @@ namespace StardewModdingAPI.Framework.ContentManagers
             // normalise asset name
             assetName = this.AssertAndNormaliseAssetName(assetName);
             if (this.TryParseExplicitLanguageAssetKey(assetName, out string newAssetName, out LanguageCode newLanguage))
-                return this.Load<T>(newAssetName, newLanguage);
+                return this.Load<T>(newAssetName, newLanguage, useCache);
 
             // get from cache
-            if (this.IsLoaded(assetName))
-                return base.Load<T>(assetName, language);
+            if (useCache && this.IsLoaded(assetName))
+                return this.RawLoad<T>(assetName, language, useCache: true);
 
             // get managed asset
             if (this.Coordinator.TryParseManagedAssetKey(assetName, out string contentManagerID, out string relativePath))
             {
-                T managedAsset = this.Coordinator.LoadAndCloneManagedAsset<T>(assetName, contentManagerID, relativePath, language);
-                this.Inject(assetName, managedAsset, language);
+                T managedAsset = this.Coordinator.LoadManagedAsset<T>(assetName, contentManagerID, relativePath, language);
+                if (useCache)
+                    this.Inject(assetName, managedAsset, language);
                 return managedAsset;
             }
 
@@ -91,7 +94,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
             {
                 this.Monitor.Log($"Broke loop while loading asset '{assetName}'.", LogLevel.Warn);
                 this.Monitor.Log($"Bypassing mod loaders for this asset. Stack trace:\n{Environment.StackTrace}", LogLevel.Trace);
-                data = base.Load<T>(assetName, language);
+                data = this.RawLoad<T>(assetName, language, useCache);
             }
             else
             {
@@ -101,7 +104,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
                     IAssetInfo info = new AssetInfo(locale, assetName, typeof(T), this.AssertAndNormaliseAssetName);
                     IAssetData asset =
                         this.ApplyLoader<T>(info)
-                        ?? new AssetDataForObject(info, base.Load<T>(assetName, language), this.AssertAndNormaliseAssetName);
+                        ?? new AssetDataForObject(info, this.RawLoad<T>(assetName, language, useCache), this.AssertAndNormaliseAssetName);
                     asset = this.ApplyEditors<T>(info, asset);
                     return (T)asset.Data;
                 });
@@ -110,39 +113,6 @@ namespace StardewModdingAPI.Framework.ContentManagers
             // update cache & return data
             this.Inject(assetName, data, language);
             return data;
-        }
-
-        /// <summary>Inject an asset into the cache.</summary>
-        /// <typeparam name="T">The type of asset to inject.</typeparam>
-        /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
-        /// <param name="value">The asset value.</param>
-        /// <param name="language">The language code for which to inject the asset.</param>
-        public override void Inject<T>(string assetName, T value, LanguageCode language)
-        {
-            // handle explicit language in asset name
-            {
-                if (this.TryParseExplicitLanguageAssetKey(assetName, out string newAssetName, out LanguageCode newLanguage))
-                {
-                    this.Inject(newAssetName, value, newLanguage);
-                    return;
-                }
-            }
-            base.Inject(assetName, value, language);
-
-            // track whether the injected asset is translatable for is-loaded lookups
-            string keyWithLocale = $"{assetName}.{this.GetLocale(language)}";
-            if (this.Cache.ContainsKey(keyWithLocale))
-            {
-                this.IsLocalisableLookup[assetName] = true;
-                this.IsLocalisableLookup[keyWithLocale] = true;
-            }
-            else if (this.Cache.ContainsKey(assetName))
-            {
-                this.IsLocalisableLookup[assetName] = false;
-                this.IsLocalisableLookup[keyWithLocale] = false;
-            }
-            else
-                this.Monitor.Log($"Asset '{assetName}' could not be found in the cache immediately after injection.", LogLevel.Error);
         }
 
         /// <summary>Perform any cleanup needed when the locale changes.</summary>
@@ -197,6 +167,72 @@ namespace StardewModdingAPI.Framework.ContentManagers
 
             // not loaded yet
             return false;
+        }
+
+        /// <summary>Inject an asset into the cache.</summary>
+        /// <typeparam name="T">The type of asset to inject.</typeparam>
+        /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
+        /// <param name="value">The asset value.</param>
+        /// <param name="language">The language code for which to inject the asset.</param>
+        protected override void Inject<T>(string assetName, T value, LanguageCode language)
+        {
+            // handle explicit language in asset name
+            {
+                if (this.TryParseExplicitLanguageAssetKey(assetName, out string newAssetName, out LanguageCode newLanguage))
+                {
+                    this.Inject(newAssetName, value, newLanguage);
+                    return;
+                }
+            }
+            base.Inject(assetName, value, language);
+
+            // track whether the injected asset is translatable for is-loaded lookups
+            string keyWithLocale = $"{assetName}.{this.GetLocale(language)}";
+            if (this.Cache.ContainsKey(keyWithLocale))
+            {
+                this.IsLocalisableLookup[assetName] = true;
+                this.IsLocalisableLookup[keyWithLocale] = true;
+            }
+            else if (this.Cache.ContainsKey(assetName))
+            {
+                this.IsLocalisableLookup[assetName] = false;
+                this.IsLocalisableLookup[keyWithLocale] = false;
+            }
+            else
+                this.Monitor.Log($"Asset '{assetName}' could not be found in the cache immediately after injection.", LogLevel.Error);
+        }
+
+        /// <summary>Load an asset file directly from the underlying content manager.</summary>
+        /// <typeparam name="T">The type of asset to load.</typeparam>
+        /// <param name="assetName">The normalised asset key.</param>
+        /// <param name="language">The language code for which to load content.</param>
+        /// <param name="useCache">Whether to read/write the loaded asset to the asset cache.</param>
+        /// <remarks>Derived from <see cref="LocalizedContentManager.Load{T}(string, LocalizedContentManager.LanguageCode)"/>.</remarks>
+        private T RawLoad<T>(string assetName, LanguageCode language, bool useCache)
+        {
+            // try translated asset
+            if (language != LocalizedContentManager.LanguageCode.en)
+            {
+                string translatedKey = $"{assetName}.{this.GetLocale(language)}";
+                if (!this.IsLocalisableLookup.TryGetValue(translatedKey, out bool isTranslatable) || isTranslatable)
+                {
+                    try
+                    {
+                        T obj = base.RawLoad<T>(translatedKey, useCache);
+                        this.IsLocalisableLookup[assetName] = true;
+                        this.IsLocalisableLookup[translatedKey] = true;
+                        return obj;
+                    }
+                    catch (ContentLoadException)
+                    {
+                        this.IsLocalisableLookup[assetName] = false;
+                        this.IsLocalisableLookup[translatedKey] = false;
+                    }
+                }
+            }
+
+            // try base asset
+            return base.RawLoad<T>(assetName, useCache);
         }
 
         /// <summary>Parse an asset key that contains an explicit language into its asset name and language, if applicable.</summary>
@@ -260,7 +296,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
             T data;
             try
             {
-                data = this.CloneIfPossible(loader.Load<T>(info));
+                data = loader.Load<T>(info);
                 this.Monitor.Log($"{mod.DisplayName} loaded asset '{info.AssetName}'.", LogLevel.Trace);
             }
             catch (Exception ex)

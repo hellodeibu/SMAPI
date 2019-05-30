@@ -6,7 +6,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using Microsoft.Xna.Framework.Content;
-using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI.Framework.Content;
 using StardewModdingAPI.Framework.Exceptions;
 using StardewModdingAPI.Framework.Reflection;
@@ -37,6 +36,9 @@ namespace StardewModdingAPI.Framework.ContentManagers
 
         /// <summary>The language enum values indexed by locale code.</summary>
         protected IDictionary<string, LanguageCode> LanguageCodes { get; }
+
+        /// <summary>A list of disposable assets.</summary>
+        private readonly List<WeakReference<IDisposable>> Disposables = new List<WeakReference<IDisposable>>();
 
 
         /*********
@@ -88,54 +90,32 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
         public override T Load<T>(string assetName)
         {
-            return this.Load<T>(assetName, LocalizedContentManager.CurrentLanguageCode);
+            return this.Load<T>(assetName, this.Language, useCache: true);
         }
+
+        /// <summary>Load an asset that has been processed by the content pipeline.</summary>
+        /// <typeparam name="T">The type of asset to load.</typeparam>
+        /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
+        /// <param name="language">The language code for which to load content.</param>
+        public override T Load<T>(string assetName, LanguageCode language)
+        {
+            return this.Load<T>(assetName, language, useCache: true);
+        }
+
+        /// <summary>Load an asset that has been processed by the content pipeline.</summary>
+        /// <typeparam name="T">The type of asset to load.</typeparam>
+        /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
+        /// <param name="language">The language code for which to load content.</param>
+        /// <param name="useCache">Whether to read/write the loaded asset to the asset cache.</param>
+        public abstract T Load<T>(string assetName, LocalizedContentManager.LanguageCode language, bool useCache);
 
         /// <summary>Load the base asset without localisation.</summary>
         /// <typeparam name="T">The type of asset to load.</typeparam>
         /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
+        [Obsolete("This method is implemented for the base game and should not be used directly. To load an asset from the underlying content manager directly, use " + nameof(BaseContentManager.RawLoad) + " instead.")]
         public override T LoadBase<T>(string assetName)
         {
-            return this.Load<T>(assetName, LanguageCode.en);
-        }
-
-        /// <summary>Inject an asset into the cache.</summary>
-        /// <typeparam name="T">The type of asset to inject.</typeparam>
-        /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
-        /// <param name="value">The asset value.</param>
-        /// <param name="language">The language code for which to inject the asset.</param>
-        public virtual void Inject<T>(string assetName, T value, LanguageCode language)
-        {
-            assetName = this.AssertAndNormaliseAssetName(assetName);
-            this.Cache[assetName] = value;
-        }
-
-        /// <summary>Get a copy of the given asset if supported.</summary>
-        /// <typeparam name="T">The asset type.</typeparam>
-        /// <param name="asset">The asset to clone.</param>
-        public T CloneIfPossible<T>(T asset)
-        {
-            switch (asset as object)
-            {
-                case Texture2D source:
-                    {
-                        int[] pixels = new int[source.Width * source.Height];
-                        source.GetData(pixels);
-
-                        Texture2D clone = new Texture2D(source.GraphicsDevice, source.Width, source.Height);
-                        clone.SetData(pixels);
-                        return (T)(object)clone;
-                    }
-
-                case Dictionary<string, string> source:
-                    return (T)(object)new Dictionary<string, string>(source);
-
-                case Dictionary<int, string> source:
-                    return (T)(object)new Dictionary<int, string>(source);
-
-                default:
-                    return asset;
-            }
+            return this.Load<T>(assetName, LanguageCode.en, useCache: true);
         }
 
         /// <summary>Perform any cleanup needed when the locale changes.</summary>
@@ -228,11 +208,28 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <param name="isDisposing">Whether the content manager is being disposed (rather than finalized).</param>
         protected override void Dispose(bool isDisposing)
         {
+            // ignore if disposed
             if (this.IsDisposed)
                 return;
             this.IsDisposed = true;
 
+            // dispose uncached assets
+            foreach (WeakReference<IDisposable> reference in this.Disposables)
+            {
+                if (reference.TryGetTarget(out IDisposable disposable))
+                {
+                    try
+                    {
+                        disposable.Dispose();
+                    }
+                    catch { /* ignore dispose errors */ }
+                }
+            }
+            this.Disposables.Clear();
+
+            // raise event
             this.OnDisposing(this);
+
             base.Dispose(isDisposing);
         }
 
@@ -249,23 +246,26 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /*********
         ** Private methods
         *********/
-        /// <summary>Get the locale codes (like <c>ja-JP</c>) used in asset keys.</summary>
-        private IDictionary<LanguageCode, string> GetKeyLocales()
+        /// <summary>Load an asset file directly from the underlying content manager.</summary>
+        /// <typeparam name="T">The type of asset to load.</typeparam>
+        /// <param name="assetName">The normalised asset key.</param>
+        /// <param name="useCache">Whether to read/write the loaded asset to the asset cache.</param>
+        protected virtual T RawLoad<T>(string assetName, bool useCache)
         {
-            // create locale => code map
-            IDictionary<LanguageCode, string> map = new Dictionary<LanguageCode, string>();
-            foreach (LanguageCode code in Enum.GetValues(typeof(LanguageCode)))
-                map[code] = this.GetLocale(code);
-
-            return map;
+            return useCache
+                ? base.LoadBase<T>(assetName)
+                : base.ReadAsset<T>(assetName, disposable => this.Disposables.Add(new WeakReference<IDisposable>(disposable)));
         }
 
-        /// <summary>Get the asset name from a cache key.</summary>
-        /// <param name="cacheKey">The input cache key.</param>
-        private string GetAssetName(string cacheKey)
+        /// <summary>Inject an asset into the cache.</summary>
+        /// <typeparam name="T">The type of asset to inject.</typeparam>
+        /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
+        /// <param name="value">The asset value.</param>
+        /// <param name="language">The language code for which to inject the asset.</param>
+        protected virtual void Inject<T>(string assetName, T value, LanguageCode language)
         {
-            this.ParseCacheKey(cacheKey, out string assetName, out string _);
-            return assetName;
+            assetName = this.AssertAndNormaliseAssetName(assetName);
+            this.Cache[assetName] = value;
         }
 
         /// <summary>Parse a cache key into its component parts.</summary>
@@ -298,5 +298,24 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <summary>Get whether an asset has already been loaded.</summary>
         /// <param name="normalisedAssetName">The normalised asset name.</param>
         protected abstract bool IsNormalisedKeyLoaded(string normalisedAssetName);
+
+        /// <summary>Get the locale codes (like <c>ja-JP</c>) used in asset keys.</summary>
+        private IDictionary<LanguageCode, string> GetKeyLocales()
+        {
+            // create locale => code map
+            IDictionary<LanguageCode, string> map = new Dictionary<LanguageCode, string>();
+            foreach (LanguageCode code in Enum.GetValues(typeof(LanguageCode)))
+                map[code] = this.GetLocale(code);
+
+            return map;
+        }
+
+        /// <summary>Get the asset name from a cache key.</summary>
+        /// <param name="cacheKey">The input cache key.</param>
+        private string GetAssetName(string cacheKey)
+        {
+            this.ParseCacheKey(cacheKey, out string assetName, out string _);
+            return assetName;
+        }
     }
 }
