@@ -223,7 +223,8 @@ namespace StardewModdingAPI.Framework
                     deprecationManager: SCore.DeprecationManager,
                     onGameInitialised: this.InitialiseAfterGameStart,
                     onGameExiting: this.Dispose,
-                    cancellationToken: this.CancellationToken
+                    cancellationToken: this.CancellationToken,
+                    logNetworkTraffic: this.Settings.LogNetworkTraffic
                 );
                 StardewValley.Program.gamePtr = this.GameInstance;
 

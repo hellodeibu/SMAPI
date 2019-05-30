@@ -62,6 +62,11 @@ This file contains advanced configuration for SMAPI. You generally shouldn't cha
   "VerboseLogging": false,
 
   /**
+   * Whether SMAPI should log network traffic (may be very verbose). Best combined with VerboseLogging, which includes network metadata.
+   */
+  "LogNetworkTraffic": false,
+
+  /**
    * Whether to generate a 'SMAPI-latest.metadata-dump.json' file in the logs folder with the full mod
    * metadata for detected mods. This is only needed when troubleshooting some cases.
    */
