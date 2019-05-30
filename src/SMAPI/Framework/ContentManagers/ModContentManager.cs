@@ -59,26 +59,19 @@ namespace StardewModdingAPI.Framework.ContentManagers
         {
             assetName = this.AssertAndNormaliseAssetName(assetName);
 
-            // get managed asset
-            if (this.IsLoaded(assetName))
-                return base.Load<T>(assetName, language);
+            // resolve managed asset key
             if (this.Coordinator.TryParseManagedAssetKey(assetName, out string contentManagerID, out string relativePath))
             {
                 if (contentManagerID != this.Name)
-                {
-                    T data = this.Coordinator.LoadAndCloneManagedAsset<T>(assetName, contentManagerID, relativePath, language);
-                    this.Inject(assetName, data, language);
-                    return data;
-                }
-
-                return this.LoadManagedAsset<T>(assetName, contentManagerID, relativePath, language);
+                    throw new SContentLoadException($"Can't load managed asset key '{assetName}' through content manager '{this.Name}' for a different mod.");
+                assetName = relativePath;
             }
 
             // get local asset
             string internalKey = this.GetInternalAssetKey(assetName);
             if (this.IsLoaded(internalKey))
                 return base.Load<T>(internalKey, language);
-            return this.LoadManagedAsset<T>(internalKey, this.Name, assetName, this.Language);
+            return this.LoadImpl<T>(internalKey, this.Name, assetName, this.Language);
         }
 
         /// <summary>Create a new content manager for temporary use.</summary>
@@ -108,13 +101,13 @@ namespace StardewModdingAPI.Framework.ContentManagers
             return this.Cache.ContainsKey(normalisedAssetName);
         }
 
-        /// <summary>Load a managed mod asset.</summary>
+        /// <summary>Load a local mod asset.</summary>
         /// <typeparam name="T">The type of asset to load.</typeparam>
-        /// <param name="internalKey">The internal asset key.</param>
+        /// <param name="cacheKey">The mod asset cache key to save.</param>
         /// <param name="contentManagerID">The unique name for the content manager which should load this asset.</param>
         /// <param name="relativePath">The relative path within the mod folder.</param>
         /// <param name="language">The language code for which to load content.</param>
-        private T LoadManagedAsset<T>(string internalKey, string contentManagerID, string relativePath, LanguageCode language)
+        private T LoadImpl<T>(string cacheKey, string contentManagerID, string relativePath, LanguageCode language)
         {
             SContentLoadException GetContentError(string reasonPhrase) => new SContentLoadException($"Failed loading asset '{relativePath}' from {contentManagerID}: {reasonPhrase}");
             try
@@ -151,7 +144,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
                         {
                             Texture2D texture = Texture2D.FromStream(Game1.graphics.GraphicsDevice, stream);
                             texture = this.PremultiplyTransparency(texture);
-                            this.Inject(internalKey, texture, language);
+                            this.Inject(cacheKey, texture, language);
                             return (T)(object)texture;
                         }
 
@@ -167,7 +160,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
                         this.FixCustomTilesheetPaths(map, relativeMapPath: relativePath);
 
                         // inject map
-                        this.Inject(internalKey, map, this.Language);
+                        this.Inject(cacheKey, map, this.Language);
                         return (T)(object)map;
 
                     default:

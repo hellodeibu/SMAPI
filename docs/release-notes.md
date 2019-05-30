@@ -23,6 +23,7 @@ These changes have not been released yet.
   * Fixed lag when a mod invalidates many NPC portraits/sprites at once.
   * Fixed map reloads resetting tilesheet seasons.
   * Fixed outdoor tilesheets being seasonalised when added to an indoor location.
+  * Fixed mods able to directly load (and in some cases edit) a different mod's local assets using internal asset key forwarding.
 
 * For the web UI:
   * When filtering the mod list, clicking a mod link now automatically adds it to the visible mods.
