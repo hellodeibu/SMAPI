@@ -185,7 +185,9 @@ namespace StardewModdingAPI.Framework
                         {
                             this.Monitor.Log($"Received mod context from farmhand {message.FarmerID}, but the game didn't see them disconnect. This may indicate issues with the network connection.", LogLevel.Info);
                             this.Peers.Remove(message.FarmerID);
-                            return;
+
+                            // FIXME: This fixes SMAPI not knowing that a re-connected user has SMAPI installed e.g. if (s)he was disconnected during a festival
+                            //return;
                         }
                         this.AddPeer(newPeer, canBeHost: false, raiseEvent: false);
 
