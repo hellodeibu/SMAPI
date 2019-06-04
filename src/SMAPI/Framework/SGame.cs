@@ -1014,7 +1014,7 @@ namespace StardewModdingAPI.Framework
                         int height = 64;
                         int x = 64;
                         int y = Game1.graphics.GraphicsDevice.Viewport.GetTitleSafeArea().Bottom - height;
-                        SpriteText.drawString(Game1.spriteBatch, s, x, y, 999999, widthOfString, height, 1f, 0.88f, false, 0, str3, -1);
+                        SpriteText.drawString(Game1.spriteBatch, s, x, y, 999999, widthOfString, height, 1f, 0.88f, false, 0, str3, -1, SpriteText.ScrollTextAlignment.Left);
                         events.Rendered.RaiseEmpty();
                         Game1.spriteBatch.End();
                         this.drawOverlays(Game1.spriteBatch);
@@ -1054,7 +1054,8 @@ namespace StardewModdingAPI.Framework
                                 Game1.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, SamplerState.PointClamp, (DepthStencilState)null, (RasterizerState)null);
                                 if (++batchOpens == 1)
                                     events.Rendering.RaiseEmpty();
-                                Game1.spriteBatch.Draw(Game1.staminaRect, Game1.lightmap.Bounds, Game1.currentLocation.Name.StartsWith("UndergroundMine") ? Game1.mine.getLightingColor(gameTime) : (Game1.ambientLight.Equals(Color.White) || Game1.isRaining && (bool)((NetFieldBase<bool, NetBool>)Game1.currentLocation.isOutdoors) ? Game1.outdoorLight : Game1.ambientLight));
+                                Color color1 = !Game1.currentLocation.Name.StartsWith("UndergroundMine") || !(Game1.currentLocation is MineShaft) ? (Game1.ambientLight.Equals(Color.White) || Game1.isRaining && (bool)((NetFieldBase<bool, NetBool>)Game1.currentLocation.isOutdoors) ? Game1.outdoorLight : Game1.ambientLight) : (Game1.currentLocation as MineShaft).getLightingColor(gameTime);
+                                Game1.spriteBatch.Draw(Game1.staminaRect, Game1.lightmap.Bounds, color1);
                                 for (int index = 0; index < Game1.currentLightSources.Count; ++index)
                                 {
                                     if (Utility.isOnScreen((Vector2)((NetFieldBase<Vector2, NetVector2>)Game1.currentLightSources.ElementAt<LightSource>(index).position), (int)((double)(float)((NetFieldBase<float, NetFloat>)Game1.currentLightSources.ElementAt<LightSource>(index).radius) * 64.0 * 4.0)))
@@ -1063,14 +1064,14 @@ namespace StardewModdingAPI.Framework
                                         Texture2D lightTexture = Game1.currentLightSources.ElementAt<LightSource>(index).lightTexture;
                                         Vector2 position = Game1.GlobalToLocal(Game1.viewport, (Vector2)((NetFieldBase<Vector2, NetVector2>)Game1.currentLightSources.ElementAt<LightSource>(index).position)) / (float)(Game1.options.lightingQuality / 2);
                                         Microsoft.Xna.Framework.Rectangle? sourceRectangle = new Microsoft.Xna.Framework.Rectangle?(Game1.currentLightSources.ElementAt<LightSource>(index).lightTexture.Bounds);
-                                        Color color = (Color)((NetFieldBase<Color, NetColor>)Game1.currentLightSources.ElementAt<LightSource>(index).color);
+                                        Color color2 = (Color)((NetFieldBase<Color, NetColor>)Game1.currentLightSources.ElementAt<LightSource>(index).color);
                                         Microsoft.Xna.Framework.Rectangle bounds = Game1.currentLightSources.ElementAt<LightSource>(index).lightTexture.Bounds;
                                         double x = (double)bounds.Center.X;
                                         bounds = Game1.currentLightSources.ElementAt<LightSource>(index).lightTexture.Bounds;
                                         double y = (double)bounds.Center.Y;
                                         Vector2 origin = new Vector2((float)x, (float)y);
                                         double num = (double)(float)((NetFieldBase<float, NetFloat>)Game1.currentLightSources.ElementAt<LightSource>(index).radius) / (double)(Game1.options.lightingQuality / 2);
-                                        spriteBatch.Draw(lightTexture, position, sourceRectangle, color, 0.0f, origin, (float)num, SpriteEffects.None, 0.9f);
+                                        spriteBatch.Draw(lightTexture, position, sourceRectangle, color2, 0.0f, origin, (float)num, SpriteEffects.None, 0.9f);
                                     }
                                 }
                                 Game1.spriteBatch.End();
@@ -1449,7 +1450,11 @@ namespace StardewModdingAPI.Framework
                             debugStringBuilder.Append(",");
                             debugStringBuilder.Append(Game1.getMouseY());
                             debugStringBuilder.Append(Environment.NewLine);
-                            debugStringBuilder.Append("debugOutput: ");
+                            debugStringBuilder.Append(" mouseWorldPosition: ");
+                            debugStringBuilder.Append(Game1.getMouseX() + Game1.viewport.X);
+                            debugStringBuilder.Append(",");
+                            debugStringBuilder.Append(Game1.getMouseY() + Game1.viewport.Y);
+                            debugStringBuilder.Append("  debugOutput: ");
                             debugStringBuilder.Append(Game1.debugOutput);
                             Game1.spriteBatch.DrawString(Game1.smallFont, debugStringBuilder, new Vector2((float)this.GraphicsDevice.Viewport.GetTitleSafeArea().X, (float)(this.GraphicsDevice.Viewport.GetTitleSafeArea().Y + Game1.smallFont.LineSpacing * 8)), Color.Red, 0.0f, Vector2.Zero, 1f, SpriteEffects.None, 0.9999999f);
                         }
@@ -1476,7 +1481,7 @@ namespace StardewModdingAPI.Framework
                         if (Game1.HostPaused)
                         {
                             string s = Game1.content.LoadString("Strings\\StringsFromCSFiles:DayTimeMoneyBox.cs.10378");
-                            SpriteText.drawStringWithScrollBackground(Game1.spriteBatch, s, 96, 32, "", 1f, -1);
+                            SpriteText.drawStringWithScrollBackground(Game1.spriteBatch, s, 96, 32, "", 1f, -1, SpriteText.ScrollTextAlignment.Left);
                         }
 
                         events.Rendered.RaiseEmpty();
