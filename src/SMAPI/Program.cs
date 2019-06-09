@@ -22,6 +22,8 @@ namespace StardewModdingAPI
         [SuppressMessage("ReSharper", "AssignNullToNotNullAttribute", Justification = "The assembly location is never null in this context.")]
         internal static readonly string DllSearchPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "smapi-internal");
 
+        /// <summary>Whether the interactive console mode is enabled or not.</summary>
+        private static bool InteractiveConsole;
 
         /*********
         ** Public methods
@@ -30,6 +32,7 @@ namespace StardewModdingAPI
         /// <param name="args">The command-line arguments.</param>
         public static void Main(string[] args)
         {
+            Program.InteractiveConsole = !args.Contains("--no-interactive");
             AppDomain.CurrentDomain.AssemblyResolve += Program.CurrentDomain_AssemblyResolve;
             Program.AssertGamePresent();
             Program.AssertGameVersion();
@@ -123,7 +126,7 @@ namespace StardewModdingAPI
             }
 
             // load SMAPI
-            using (SCore core = new SCore(modsPath, writeToConsole))
+            using (SCore core = new SCore(modsPath, writeToConsole, Program.InteractiveConsole))
                 core.RunInteractively();
         }
 
@@ -144,7 +147,8 @@ namespace StardewModdingAPI
             if (showMessage)
                 Console.WriteLine("Game has ended. Press any key to exit.");
             Thread.Sleep(100);
-            Console.ReadKey();
+            if (Program.InteractiveConsole)
+                Console.ReadKey();
             Environment.Exit(0);
         }
     }
