@@ -42,6 +42,7 @@ These changes have not been released yet.
   * Fixed 'location list changed' verbose log not correctly listing changes.
   * Fixed mods able to directly load (and in some cases edit) a different mod's local assets using internal asset key forwarding.
   * Fixed changes to a map loaded by a mod being persisted across content managers.
+  * Fixed `SDate.AddDays` incorrectly changing year when the result is exactly winter 28.
 
 ## 2.11.2
 Released 23 April 2019 for Stardew Valley 1.3.36.
