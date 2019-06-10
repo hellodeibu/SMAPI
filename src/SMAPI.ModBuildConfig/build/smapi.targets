@@ -11,13 +11,9 @@
   <Import Condition="$(OS) != 'Windows_NT' AND Exists('$(HOME)\stardewvalley.targets')" Project="$(HOME)\stardewvalley.targets" />
   <Import Condition="$(OS) == 'Windows_NT' AND Exists('$(USERPROFILE)\stardewvalley.targets')" Project="$(USERPROFILE)\stardewvalley.targets" />
 
-  <!-- set setting defaults -->
+  <!-- set build options -->
   <PropertyGroup>
-    <!-- map legacy settings -->
-    <ModFolderName Condition="'$(ModFolderName)' == '' AND '$(DeployModFolderName)' != ''">$(DeployModFolderName)</ModFolderName>
-    <ModZipPath Condition="'$(ModZipPath)' == '' AND '$(DeployModZipTo)' != ''">$(DeployModZipTo)</ModZipPath>
-
-    <!-- set default settings -->
+    <!-- set default package options -->
     <ModFolderName Condition="'$(ModFolderName)' == ''">$(MSBuildProjectName)</ModFolderName>
     <ModZipPath Condition="'$(ModZipPath)' == ''">$(TargetDir)</ModZipPath>
     <EnableModDeploy Condition="'$(EnableModDeploy)' == ''">True</EnableModDeploy>
