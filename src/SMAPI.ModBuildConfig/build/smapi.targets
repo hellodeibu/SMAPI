@@ -13,6 +13,13 @@
 
   <!-- set build options -->
   <PropertyGroup>
+    <!-- set build to x86 to avoid mismatched platform warnings (only affects mods using new csproj format) -->
+    <Platforms>x86</Platforms>
+    <PlatformTarget>x86</PlatformTarget>
+
+    <!-- recognise XNA Framework DLLs in the GAC (only affects mods using new csproj format) -->
+    <AssemblySearchPaths>$(AssemblySearchPaths);{GAC}</AssemblySearchPaths>
+
     <!-- set default package options -->
     <ModFolderName Condition="'$(ModFolderName)' == ''">$(MSBuildProjectName)</ModFolderName>
     <ModZipPath Condition="'$(ModZipPath)' == ''">$(TargetDir)</ModZipPath>

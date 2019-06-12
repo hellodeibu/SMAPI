@@ -230,8 +230,11 @@ _[Game path](#game-path)_ above.
 ### Upcoming release
 * Updated for SMAPI 3.0 and Stardew Valley 1.4.
 * If the project contains an `assets` folder, its contents are now included in the mod automatically.
+* For projects using the new `.csproj` format:
+  * platform target is now set to x86 automatically to avoid mismatching platform target warnings;
+  * added GAC to assembly search paths to fix references to XNA Framework.
 * Fixed `Newtonsoft.Json.pdb` included in release zips when Json.NET is referenced directly.
-* Fixed `<IgnoreModFilePatterns>` not working for `i18n` files.
+* Fixed `&lt;IgnoreModFilePatterns&gt;` not working for `i18n` files.
 * Dropped support for older versions of SMAPI and Visual Studio.
 
 ### 2.2
