@@ -98,7 +98,7 @@
           <Private>false</Private>
           <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
         </Reference>
-        <Reference Include="StardewValley.GameData">
+        <Reference Include="StardewValley.GameData" Condition="Exists('$(GamePath)\StardewValley.GameData.dll')"> <!--temporary backwards-compatibility-->
           <HintPath>$(GamePath)\StardewValley.GameData.dll</HintPath>
           <Private>false</Private>
           <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
@@ -112,6 +112,9 @@
           <HintPath>$(GamePath)\smapi-internal\SMAPI.Toolkit.CoreInterfaces.dll</HintPath>
           <Private>false</Private>
           <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
+
+          <!-- temporary backwards-compatibility -->
+          <HintPath Condition="!Exists('$(GamePath)\smapi-internal\SMAPI.Toolkit.CoreInterfaces.dll') AND Exists('$(GamePath)\smapi-internal\StardewModdingAPI.Toolkit.CoreInterfaces.dll')">$(GamePath)\smapi-internal\StardewModdingAPI.Toolkit.CoreInterfaces.dll</HintPath>
         </Reference>
         <Reference Include="xTile, Version=2.0.4.0, Culture=neutral, processorArchitecture=x86">
           <HintPath>$(GamePath)\xTile.dll</HintPath>
@@ -142,7 +145,7 @@
           <Private>false</Private>
           <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
         </Reference>
-        <Reference Include="StardewValley.GameData.MonoGame">
+        <Reference Include="StardewValley.GameData.MonoGame" Condition="Exists('$(GamePath)\StardewValley.GameData.MonoGame.dll')"> <!--temporary backwards-compatibility-->
           <HintPath>$(GamePath)\StardewValley.GameData.MonoGame.dll</HintPath>
           <Private>false</Private>
           <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
@@ -156,6 +159,9 @@
           <HintPath>$(GamePath)\smapi-internal\SMAPI.Toolkit.CoreInterfaces.dll</HintPath>
           <Private>false</Private>
           <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
+
+          <!-- temporary backwards-compatibility -->
+          <HintPath Condition="!Exists('$(GamePath)\smapi-internal\SMAPI.Toolkit.CoreInterfaces.dll') AND Exists('$(GamePath)\smapi-internal\StardewModdingAPI.Toolkit.CoreInterfaces.dll')">$(GamePath)\smapi-internal\StardewModdingAPI.Toolkit.CoreInterfaces.dll</HintPath>
         </Reference>
         <Reference Include="xTile">
           <HintPath>$(GamePath)\xTile.dll</HintPath>
