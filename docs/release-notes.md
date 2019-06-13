@@ -22,6 +22,7 @@ These changes have not been released yet.
   * Fixed lag in some cases due to incorrect asset caching when playing in non-English.
   * Fixed lag when a mod invalidates many NPC portraits/sprites at once.
   * Fixed map reloads resetting tilesheet seasons.
+  * Fixed map reloads not updating door warps.
   * Fixed outdoor tilesheets being seasonalised when added to an indoor location.
 
 * For the web UI:
