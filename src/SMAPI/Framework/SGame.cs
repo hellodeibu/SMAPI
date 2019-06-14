@@ -28,7 +28,6 @@ using StardewValley.Menus;
 using StardewValley.TerrainFeatures;
 using StardewValley.Tools;
 using xTile.Dimensions;
-using xTile.Layers;
 using SObject = StardewValley.Object;
 
 namespace StardewModdingAPI.Framework
@@ -270,15 +269,27 @@ namespace StardewModdingAPI.Framework
                 this.DeprecationManager.PrintQueued();
 
                 /*********
-                ** Special cases
+                ** First-tick initialisation
                 *********/
-                // Perform first-tick initialisation.
                 if (!this.IsInitialised)
                 {
                     this.IsInitialised = true;
                     this.InitialiseAfterGameStarted();
                 }
 
+                /*********
+                ** Update input
+                *********/
+                // This should *always* run, even when suppressing mod events, since the game uses
+                // this too. For example, doing this after mod event suppression would prevent the
+                // user from doing anything on the overnight shipping screen.
+                SInputState inputState = this.Input;
+                if (this.IsActive)
+                    inputState.TrueUpdate();
+
+                /*********
+                ** Special cases
+                *********/
                 // Abort if SMAPI is exiting.
                 if (this.CancellationToken.IsCancellationRequested)
                 {
@@ -345,6 +356,38 @@ namespace StardewModdingAPI.Framework
                     return;
                 }
 
+                // Raise minimal events while saving.
+                // While the game is writing to the save file in the background, mods can unexpectedly
+                // fail since they don't have exclusive access to resources (e.g. collection changed
+                // during enumeration errors). To avoid problems, events are not invoked while a save
+                // is in progress. It's safe to raise SaveEvents.BeforeSave as soon as the menu is
+                // opened (since the save hasn't started yet), but all other events should be suppressed.
+                if (Context.IsSaving)
+                {
+                    // raise before-create
+                    if (!Context.IsWorldReady && !this.IsBetweenCreateEvents)
+                    {
+                        this.IsBetweenCreateEvents = true;
+                        this.Monitor.Log("Context: before save creation.", LogLevel.Trace);
+                        events.SaveCreating.RaiseEmpty();
+                    }
+
+                    // raise before-save
+                    if (Context.IsWorldReady && !this.IsBetweenSaveEvents)
+                    {
+                        this.IsBetweenSaveEvents = true;
+                        this.Monitor.Log("Context: before save.", LogLevel.Trace);
+                        events.Saving.RaiseEmpty();
+                    }
+
+                    // suppress non-save events
+                    events.UnvalidatedUpdateTicking.RaiseEmpty();
+                    SGame.TicksElapsed++;
+                    base.Update(gameTime);
+                    events.UnvalidatedUpdateTicked.RaiseEmpty();
+                    return;
+                }
+
                 /*********
                 ** Execute commands
                 *********/
@@ -383,66 +426,6 @@ namespace StardewModdingAPI.Framework
                 }
 
                 /*********
-                ** Update input
-                *********/
-                // This should *always* run, even when suppressing mod events, since the game uses
-                // this too. For example, doing this after mod event suppression would prevent the
-                // user from doing anything on the overnight shipping screen.
-                SInputState inputState = this.Input;
-                if (this.IsActive)
-                    inputState.TrueUpdate();
-
-                /*********
-                ** Save events + suppress events during save
-                *********/
-                // While the game is writing to the save file in the background, mods can unexpectedly
-                // fail since they don't have exclusive access to resources (e.g. collection changed
-                // during enumeration errors). To avoid problems, events are not invoked while a save
-                // is in progress. It's safe to raise SaveEvents.BeforeSave as soon as the menu is
-                // opened (since the save hasn't started yet), but all other events should be suppressed.
-                if (Context.IsSaving)
-                {
-                    // raise before-create
-                    if (!Context.IsWorldReady && !this.IsBetweenCreateEvents)
-                    {
-                        this.IsBetweenCreateEvents = true;
-                        this.Monitor.Log("Context: before save creation.", LogLevel.Trace);
-                        events.SaveCreating.RaiseEmpty();
-                    }
-
-                    // raise before-save
-                    if (Context.IsWorldReady && !this.IsBetweenSaveEvents)
-                    {
-                        this.IsBetweenSaveEvents = true;
-                        this.Monitor.Log("Context: before save.", LogLevel.Trace);
-                        events.Saving.RaiseEmpty();
-                    }
-
-                    // suppress non-save events
-                    events.UnvalidatedUpdateTicking.RaiseEmpty();
-                    SGame.TicksElapsed++;
-                    base.Update(gameTime);
-                    events.UnvalidatedUpdateTicked.RaiseEmpty();
-                    return;
-                }
-                if (this.IsBetweenCreateEvents)
-                {
-                    // raise after-create
-                    this.IsBetweenCreateEvents = false;
-                    this.Monitor.Log($"Context: after save creation, starting {Game1.currentSeason} {Game1.dayOfMonth} Y{Game1.year}.", LogLevel.Trace);
-                    this.OnLoadStageChanged(LoadStage.CreatedSaveFile);
-                    events.SaveCreated.RaiseEmpty();
-                }
-                if (this.IsBetweenSaveEvents)
-                {
-                    // raise after-save
-                    this.IsBetweenSaveEvents = false;
-                    this.Monitor.Log($"Context: after save, starting {Game1.currentSeason} {Game1.dayOfMonth} Y{Game1.year}.", LogLevel.Trace);
-                    events.Saved.RaiseEmpty();
-                    events.DayStarted.RaiseEmpty();
-                }
-
-                /*********
                 ** Update context
                 *********/
                 bool wasWorldReady = Context.IsWorldReady;
@@ -464,340 +447,370 @@ namespace StardewModdingAPI.Framework
                 this.Watchers.Update();
 
                 /*********
-                ** Locale changed events
+                ** Pre-update events
                 *********/
-                if (this.Watchers.LocaleWatcher.IsChanged)
                 {
-                    this.Monitor.Log($"Context: locale set to {this.Watchers.LocaleWatcher.CurrentValue}.", LogLevel.Trace);
-
-                    this.Watchers.LocaleWatcher.Reset();
-                }
-
-                /*********
-                ** Load / return-to-title events
-                *********/
-                if (wasWorldReady && !Context.IsWorldReady)
-                    this.OnLoadStageChanged(LoadStage.None);
-                else if (Context.IsWorldReady && Context.LoadStage != LoadStage.Ready)
-                {
-                    // print context
-                    string context = $"Context: loaded save '{Constants.SaveFolderName}', starting {Game1.currentSeason} {Game1.dayOfMonth} Y{Game1.year}, locale set to {this.ContentCore.Language}.";
-                    if (Context.IsMultiplayer)
+                    /*********
+                    ** Save created/loaded events
+                    *********/
+                    if (this.IsBetweenCreateEvents)
                     {
-                        int onlineCount = Game1.getOnlineFarmers().Count();
-                        context += $" {(Context.IsMainPlayer ? "Main player" : "Farmhand")} with {onlineCount} {(onlineCount == 1 ? "player" : "players")} online.";
+                        // raise after-create
+                        this.IsBetweenCreateEvents = false;
+                        this.Monitor.Log($"Context: after save creation, starting {Game1.currentSeason} {Game1.dayOfMonth} Y{Game1.year}.", LogLevel.Trace);
+                        this.OnLoadStageChanged(LoadStage.CreatedSaveFile);
+                        events.SaveCreated.RaiseEmpty();
                     }
-                    else
-                        context += " Single-player.";
-                    this.Monitor.Log(context, LogLevel.Trace);
-
-                    // raise events
-                    this.OnLoadStageChanged(LoadStage.Ready);
-                    events.SaveLoaded.RaiseEmpty();
-                    events.DayStarted.RaiseEmpty();
-                }
-
-                /*********
-                ** Window events
-                *********/
-                // Here we depend on the game's viewport instead of listening to the Window.Resize
-                // event because we need to notify mods after the game handles the resize, so the
-                // game's metadata (like Game1.viewport) are updated. That's a bit complicated
-                // since the game adds & removes its own handler on the fly.
-                if (this.Watchers.WindowSizeWatcher.IsChanged)
-                {
-                    if (this.Monitor.IsVerbose)
-                        this.Monitor.Log($"Events: window size changed to {this.Watchers.WindowSizeWatcher.CurrentValue}.", LogLevel.Trace);
-
-                    Point oldSize = this.Watchers.WindowSizeWatcher.PreviousValue;
-                    Point newSize = this.Watchers.WindowSizeWatcher.CurrentValue;
-
-                    events.WindowResized.Raise(new WindowResizedEventArgs(oldSize, newSize));
-                    this.Watchers.WindowSizeWatcher.Reset();
-                }
-
-                /*********
-                ** Input events (if window has focus)
-                *********/
-                if (this.IsActive)
-                {
-                    // raise events
-                    bool isChatInput = Game1.IsChatting || (Context.IsMultiplayer && Context.IsWorldReady && Game1.activeClickableMenu == null && Game1.currentMinigame == null && inputState.IsAnyDown(Game1.options.chatButton));
-                    if (!isChatInput)
+                    if (this.IsBetweenSaveEvents)
                     {
-                        ICursorPosition cursor = this.Input.CursorPosition;
-
-                        // raise cursor moved event
-                        if (this.Watchers.CursorWatcher.IsChanged)
-                        {
-                            if (events.CursorMoved.HasListeners())
-                            {
-                                ICursorPosition was = this.Watchers.CursorWatcher.PreviousValue;
-                                ICursorPosition now = this.Watchers.CursorWatcher.CurrentValue;
-                                this.Watchers.CursorWatcher.Reset();
-
-                                events.CursorMoved.Raise(new CursorMovedEventArgs(was, now));
-                            }
-                            else
-                                this.Watchers.CursorWatcher.Reset();
-                        }
-
-                        // raise mouse wheel scrolled
-                        if (this.Watchers.MouseWheelScrollWatcher.IsChanged)
-                        {
-                            if (events.MouseWheelScrolled.HasListeners() || this.Monitor.IsVerbose)
-                            {
-                                int was = this.Watchers.MouseWheelScrollWatcher.PreviousValue;
-                                int now = this.Watchers.MouseWheelScrollWatcher.CurrentValue;
-                                this.Watchers.MouseWheelScrollWatcher.Reset();
-
-                                if (this.Monitor.IsVerbose)
-                                    this.Monitor.Log($"Events: mouse wheel scrolled to {now}.", LogLevel.Trace);
-                                events.MouseWheelScrolled.Raise(new MouseWheelScrolledEventArgs(cursor, was, now));
-                            }
-                            else
-                                this.Watchers.MouseWheelScrollWatcher.Reset();
-                        }
-
-                        // raise input button events
-                        foreach (var pair in inputState.ActiveButtons)
-                        {
-                            SButton button = pair.Key;
-                            InputStatus status = pair.Value;
-
-                            if (status == InputStatus.Pressed)
-                            {
-                                if (this.Monitor.IsVerbose)
-                                    this.Monitor.Log($"Events: button {button} pressed.", LogLevel.Trace);
-
-                                events.ButtonPressed.Raise(new ButtonPressedEventArgs(button, cursor, inputState));
-                            }
-                            else if (status == InputStatus.Released)
-                            {
-                                if (this.Monitor.IsVerbose)
-                                    this.Monitor.Log($"Events: button {button} released.", LogLevel.Trace);
-
-                                events.ButtonReleased.Raise(new ButtonReleasedEventArgs(button, cursor, inputState));
-                            }
-                        }
+                        // raise after-save
+                        this.IsBetweenSaveEvents = false;
+                        this.Monitor.Log($"Context: after save, starting {Game1.currentSeason} {Game1.dayOfMonth} Y{Game1.year}.", LogLevel.Trace);
+                        events.Saved.RaiseEmpty();
+                        events.DayStarted.RaiseEmpty();
                     }
-                }
 
-                /*********
-                ** Menu events
-                *********/
-                if (this.Watchers.ActiveMenuWatcher.IsChanged)
-                {
-                    IClickableMenu was = this.Watchers.ActiveMenuWatcher.PreviousValue;
-                    IClickableMenu now = this.Watchers.ActiveMenuWatcher.CurrentValue;
-                    this.Watchers.ActiveMenuWatcher.Reset(); // reset here so a mod changing the menu will be raised as a new event afterwards
-
-                    if (this.Monitor.IsVerbose)
-                        this.Monitor.Log($"Context: menu changed from {was?.GetType().FullName ?? "none"} to {now?.GetType().FullName ?? "none"}.", LogLevel.Trace);
-
-                    // raise menu events
-                    events.MenuChanged.Raise(new MenuChangedEventArgs(was, now));
-                }
-
-                /*********
-                ** World & player events
-                *********/
-                if (Context.IsWorldReady)
-                {
-                    bool raiseWorldEvents = !this.Watchers.SaveIdWatcher.IsChanged; // don't report changes from unloaded => loaded
-
-                    // raise location changes
-                    if (this.Watchers.LocationsWatcher.IsChanged)
+                    /*********
+                    ** Locale changed events
+                    *********/
+                    if (this.Watchers.LocaleWatcher.IsChanged)
                     {
-                        // location list changes
-                        if (this.Watchers.LocationsWatcher.IsLocationListChanged)
+                        this.Monitor.Log($"Context: locale set to {this.Watchers.LocaleWatcher.CurrentValue}.", LogLevel.Trace);
+
+                        this.Watchers.LocaleWatcher.Reset();
+                    }
+
+                    /*********
+                    ** Load / return-to-title events
+                    *********/
+                    if (wasWorldReady && !Context.IsWorldReady)
+                        this.OnLoadStageChanged(LoadStage.None);
+                    else if (Context.IsWorldReady && Context.LoadStage != LoadStage.Ready)
+                    {
+                        // print context
+                        string context = $"Context: loaded save '{Constants.SaveFolderName}', starting {Game1.currentSeason} {Game1.dayOfMonth} Y{Game1.year}, locale set to {this.ContentCore.Language}.";
+                        if (Context.IsMultiplayer)
                         {
-                            GameLocation[] added = this.Watchers.LocationsWatcher.Added.ToArray();
-                            GameLocation[] removed = this.Watchers.LocationsWatcher.Removed.ToArray();
-                            this.Watchers.LocationsWatcher.ResetLocationList();
-
-                            if (this.Monitor.IsVerbose)
-                            {
-                                string addedText = added.Any() ? string.Join(", ", added.Select(p => p.Name)) : "none";
-                                string removedText = removed.Any() ? string.Join(", ", removed.Select(p => p.Name)) : "none";
-                                this.Monitor.Log($"Context: location list changed (added {addedText}; removed {removedText}).", LogLevel.Trace);
-                            }
-
-                            events.LocationListChanged.Raise(new LocationListChangedEventArgs(added, removed));
-                        }
-
-                        // raise location contents changed
-                        if (raiseWorldEvents)
-                        {
-                            foreach (LocationTracker watcher in this.Watchers.LocationsWatcher.Locations)
-                            {
-                                // buildings changed
-                                if (watcher.BuildingsWatcher.IsChanged)
-                                {
-                                    GameLocation location = watcher.Location;
-                                    Building[] added = watcher.BuildingsWatcher.Added.ToArray();
-                                    Building[] removed = watcher.BuildingsWatcher.Removed.ToArray();
-                                    watcher.BuildingsWatcher.Reset();
-
-                                    events.BuildingListChanged.Raise(new BuildingListChangedEventArgs(location, added, removed));
-                                }
-
-                                // debris changed
-                                if (watcher.DebrisWatcher.IsChanged)
-                                {
-                                    GameLocation location = watcher.Location;
-                                    Debris[] added = watcher.DebrisWatcher.Added.ToArray();
-                                    Debris[] removed = watcher.DebrisWatcher.Removed.ToArray();
-                                    watcher.DebrisWatcher.Reset();
-
-                                    events.DebrisListChanged.Raise(new DebrisListChangedEventArgs(location, added, removed));
-                                }
-
-                                // large terrain features changed
-                                if (watcher.LargeTerrainFeaturesWatcher.IsChanged)
-                                {
-                                    GameLocation location = watcher.Location;
-                                    LargeTerrainFeature[] added = watcher.LargeTerrainFeaturesWatcher.Added.ToArray();
-                                    LargeTerrainFeature[] removed = watcher.LargeTerrainFeaturesWatcher.Removed.ToArray();
-                                    watcher.LargeTerrainFeaturesWatcher.Reset();
-
-                                    events.LargeTerrainFeatureListChanged.Raise(new LargeTerrainFeatureListChangedEventArgs(location, added, removed));
-                                }
-
-                                // NPCs changed
-                                if (watcher.NpcsWatcher.IsChanged)
-                                {
-                                    GameLocation location = watcher.Location;
-                                    NPC[] added = watcher.NpcsWatcher.Added.ToArray();
-                                    NPC[] removed = watcher.NpcsWatcher.Removed.ToArray();
-                                    watcher.NpcsWatcher.Reset();
-
-                                    events.NpcListChanged.Raise(new NpcListChangedEventArgs(location, added, removed));
-                                }
-
-                                // objects changed
-                                if (watcher.ObjectsWatcher.IsChanged)
-                                {
-                                    GameLocation location = watcher.Location;
-                                    KeyValuePair<Vector2, SObject>[] added = watcher.ObjectsWatcher.Added.ToArray();
-                                    KeyValuePair<Vector2, SObject>[] removed = watcher.ObjectsWatcher.Removed.ToArray();
-                                    watcher.ObjectsWatcher.Reset();
-
-                                    events.ObjectListChanged.Raise(new ObjectListChangedEventArgs(location, added, removed));
-                                }
-
-                                // terrain features changed
-                                if (watcher.TerrainFeaturesWatcher.IsChanged)
-                                {
-                                    GameLocation location = watcher.Location;
-                                    KeyValuePair<Vector2, TerrainFeature>[] added = watcher.TerrainFeaturesWatcher.Added.ToArray();
-                                    KeyValuePair<Vector2, TerrainFeature>[] removed = watcher.TerrainFeaturesWatcher.Removed.ToArray();
-                                    watcher.TerrainFeaturesWatcher.Reset();
-
-                                    events.TerrainFeatureListChanged.Raise(new TerrainFeatureListChangedEventArgs(location, added, removed));
-                                }
-                            }
+                            int onlineCount = Game1.getOnlineFarmers().Count();
+                            context += $" {(Context.IsMainPlayer ? "Main player" : "Farmhand")} with {onlineCount} {(onlineCount == 1 ? "player" : "players")} online.";
                         }
                         else
-                            this.Watchers.LocationsWatcher.Reset();
+                            context += " Single-player.";
+                        this.Monitor.Log(context, LogLevel.Trace);
+
+                        // raise events
+                        this.OnLoadStageChanged(LoadStage.Ready);
+                        events.SaveLoaded.RaiseEmpty();
+                        events.DayStarted.RaiseEmpty();
                     }
 
-                    // raise time changed
-                    if (raiseWorldEvents && this.Watchers.TimeWatcher.IsChanged)
+                    /*********
+                    ** Window events
+                    *********/
+                    // Here we depend on the game's viewport instead of listening to the Window.Resize
+                    // event because we need to notify mods after the game handles the resize, so the
+                    // game's metadata (like Game1.viewport) are updated. That's a bit complicated
+                    // since the game adds & removes its own handler on the fly.
+                    if (this.Watchers.WindowSizeWatcher.IsChanged)
                     {
-                        int was = this.Watchers.TimeWatcher.PreviousValue;
-                        int now = this.Watchers.TimeWatcher.CurrentValue;
-                        this.Watchers.TimeWatcher.Reset();
+                        if (this.Monitor.IsVerbose)
+                            this.Monitor.Log($"Events: window size changed to {this.Watchers.WindowSizeWatcher.CurrentValue}.", LogLevel.Trace);
+
+                        Point oldSize = this.Watchers.WindowSizeWatcher.PreviousValue;
+                        Point newSize = this.Watchers.WindowSizeWatcher.CurrentValue;
+
+                        events.WindowResized.Raise(new WindowResizedEventArgs(oldSize, newSize));
+                        this.Watchers.WindowSizeWatcher.Reset();
+                    }
+
+                    /*********
+                    ** Input events (if window has focus)
+                    *********/
+                    if (this.IsActive)
+                    {
+                        // raise events
+                        bool isChatInput = Game1.IsChatting || (Context.IsMultiplayer && Context.IsWorldReady && Game1.activeClickableMenu == null && Game1.currentMinigame == null && inputState.IsAnyDown(Game1.options.chatButton));
+                        if (!isChatInput)
+                        {
+                            ICursorPosition cursor = this.Input.CursorPosition;
+
+                            // raise cursor moved event
+                            if (this.Watchers.CursorWatcher.IsChanged)
+                            {
+                                if (events.CursorMoved.HasListeners())
+                                {
+                                    ICursorPosition was = this.Watchers.CursorWatcher.PreviousValue;
+                                    ICursorPosition now = this.Watchers.CursorWatcher.CurrentValue;
+                                    this.Watchers.CursorWatcher.Reset();
+
+                                    events.CursorMoved.Raise(new CursorMovedEventArgs(was, now));
+                                }
+                                else
+                                    this.Watchers.CursorWatcher.Reset();
+                            }
+
+                            // raise mouse wheel scrolled
+                            if (this.Watchers.MouseWheelScrollWatcher.IsChanged)
+                            {
+                                if (events.MouseWheelScrolled.HasListeners() || this.Monitor.IsVerbose)
+                                {
+                                    int was = this.Watchers.MouseWheelScrollWatcher.PreviousValue;
+                                    int now = this.Watchers.MouseWheelScrollWatcher.CurrentValue;
+                                    this.Watchers.MouseWheelScrollWatcher.Reset();
+
+                                    if (this.Monitor.IsVerbose)
+                                        this.Monitor.Log($"Events: mouse wheel scrolled to {now}.", LogLevel.Trace);
+                                    events.MouseWheelScrolled.Raise(new MouseWheelScrolledEventArgs(cursor, was, now));
+                                }
+                                else
+                                    this.Watchers.MouseWheelScrollWatcher.Reset();
+                            }
+
+                            // raise input button events
+                            foreach (var pair in inputState.ActiveButtons)
+                            {
+                                SButton button = pair.Key;
+                                InputStatus status = pair.Value;
+
+                                if (status == InputStatus.Pressed)
+                                {
+                                    if (this.Monitor.IsVerbose)
+                                        this.Monitor.Log($"Events: button {button} pressed.", LogLevel.Trace);
+
+                                    events.ButtonPressed.Raise(new ButtonPressedEventArgs(button, cursor, inputState));
+                                }
+                                else if (status == InputStatus.Released)
+                                {
+                                    if (this.Monitor.IsVerbose)
+                                        this.Monitor.Log($"Events: button {button} released.", LogLevel.Trace);
+
+                                    events.ButtonReleased.Raise(new ButtonReleasedEventArgs(button, cursor, inputState));
+                                }
+                            }
+                        }
+                    }
+
+                    /*********
+                    ** Menu events
+                    *********/
+                    if (this.Watchers.ActiveMenuWatcher.IsChanged)
+                    {
+                        IClickableMenu was = this.Watchers.ActiveMenuWatcher.PreviousValue;
+                        IClickableMenu now = this.Watchers.ActiveMenuWatcher.CurrentValue;
+                        this.Watchers.ActiveMenuWatcher.Reset(); // reset here so a mod changing the menu will be raised as a new event afterwards
 
                         if (this.Monitor.IsVerbose)
-                            this.Monitor.Log($"Events: time changed from {was} to {now}.", LogLevel.Trace);
+                            this.Monitor.Log($"Context: menu changed from {was?.GetType().FullName ?? "none"} to {now?.GetType().FullName ?? "none"}.", LogLevel.Trace);
 
-                        events.TimeChanged.Raise(new TimeChangedEventArgs(was, now));
+                        // raise menu events
+                        events.MenuChanged.Raise(new MenuChangedEventArgs(was, now));
                     }
-                    else
-                        this.Watchers.TimeWatcher.Reset();
 
-                    // raise player events
-                    if (raiseWorldEvents)
+                    /*********
+                    ** World & player events
+                    *********/
+                    if (Context.IsWorldReady)
                     {
-                        PlayerTracker playerTracker = this.Watchers.CurrentPlayerTracker;
+                        bool raiseWorldEvents = !this.Watchers.SaveIdWatcher.IsChanged; // don't report changes from unloaded => loaded
 
-                        // raise current location changed
-                        if (playerTracker.TryGetNewLocation(out GameLocation newLocation))
+                        // raise location changes
+                        if (this.Watchers.LocationsWatcher.IsChanged)
                         {
-                            if (this.Monitor.IsVerbose)
-                                this.Monitor.Log($"Context: set location to {newLocation.Name}.", LogLevel.Trace);
+                            // location list changes
+                            if (this.Watchers.LocationsWatcher.IsLocationListChanged)
+                            {
+                                GameLocation[] added = this.Watchers.LocationsWatcher.Added.ToArray();
+                                GameLocation[] removed = this.Watchers.LocationsWatcher.Removed.ToArray();
+                                this.Watchers.LocationsWatcher.ResetLocationList();
 
-                            GameLocation oldLocation = playerTracker.LocationWatcher.PreviousValue;
-                            events.Warped.Raise(new WarpedEventArgs(playerTracker.Player, oldLocation, newLocation));
+                                if (this.Monitor.IsVerbose)
+                                {
+                                    string addedText = added.Any() ? string.Join(", ", added.Select(p => p.Name)) : "none";
+                                    string removedText = removed.Any() ? string.Join(", ", removed.Select(p => p.Name)) : "none";
+                                    this.Monitor.Log($"Context: location list changed (added {addedText}; removed {removedText}).", LogLevel.Trace);
+                                }
+
+                                events.LocationListChanged.Raise(new LocationListChangedEventArgs(added, removed));
+                            }
+
+                            // raise location contents changed
+                            if (raiseWorldEvents)
+                            {
+                                foreach (LocationTracker watcher in this.Watchers.LocationsWatcher.Locations)
+                                {
+                                    // buildings changed
+                                    if (watcher.BuildingsWatcher.IsChanged)
+                                    {
+                                        GameLocation location = watcher.Location;
+                                        Building[] added = watcher.BuildingsWatcher.Added.ToArray();
+                                        Building[] removed = watcher.BuildingsWatcher.Removed.ToArray();
+                                        watcher.BuildingsWatcher.Reset();
+
+                                        events.BuildingListChanged.Raise(new BuildingListChangedEventArgs(location, added, removed));
+                                    }
+
+                                    // debris changed
+                                    if (watcher.DebrisWatcher.IsChanged)
+                                    {
+                                        GameLocation location = watcher.Location;
+                                        Debris[] added = watcher.DebrisWatcher.Added.ToArray();
+                                        Debris[] removed = watcher.DebrisWatcher.Removed.ToArray();
+                                        watcher.DebrisWatcher.Reset();
+
+                                        events.DebrisListChanged.Raise(new DebrisListChangedEventArgs(location, added, removed));
+                                    }
+
+                                    // large terrain features changed
+                                    if (watcher.LargeTerrainFeaturesWatcher.IsChanged)
+                                    {
+                                        GameLocation location = watcher.Location;
+                                        LargeTerrainFeature[] added = watcher.LargeTerrainFeaturesWatcher.Added.ToArray();
+                                        LargeTerrainFeature[] removed = watcher.LargeTerrainFeaturesWatcher.Removed.ToArray();
+                                        watcher.LargeTerrainFeaturesWatcher.Reset();
+
+                                        events.LargeTerrainFeatureListChanged.Raise(new LargeTerrainFeatureListChangedEventArgs(location, added, removed));
+                                    }
+
+                                    // NPCs changed
+                                    if (watcher.NpcsWatcher.IsChanged)
+                                    {
+                                        GameLocation location = watcher.Location;
+                                        NPC[] added = watcher.NpcsWatcher.Added.ToArray();
+                                        NPC[] removed = watcher.NpcsWatcher.Removed.ToArray();
+                                        watcher.NpcsWatcher.Reset();
+
+                                        events.NpcListChanged.Raise(new NpcListChangedEventArgs(location, added, removed));
+                                    }
+
+                                    // objects changed
+                                    if (watcher.ObjectsWatcher.IsChanged)
+                                    {
+                                        GameLocation location = watcher.Location;
+                                        KeyValuePair<Vector2, SObject>[] added = watcher.ObjectsWatcher.Added.ToArray();
+                                        KeyValuePair<Vector2, SObject>[] removed = watcher.ObjectsWatcher.Removed.ToArray();
+                                        watcher.ObjectsWatcher.Reset();
+
+                                        events.ObjectListChanged.Raise(new ObjectListChangedEventArgs(location, added, removed));
+                                    }
+
+                                    // terrain features changed
+                                    if (watcher.TerrainFeaturesWatcher.IsChanged)
+                                    {
+                                        GameLocation location = watcher.Location;
+                                        KeyValuePair<Vector2, TerrainFeature>[] added = watcher.TerrainFeaturesWatcher.Added.ToArray();
+                                        KeyValuePair<Vector2, TerrainFeature>[] removed = watcher.TerrainFeaturesWatcher.Removed.ToArray();
+                                        watcher.TerrainFeaturesWatcher.Reset();
+
+                                        events.TerrainFeatureListChanged.Raise(new TerrainFeatureListChangedEventArgs(location, added, removed));
+                                    }
+                                }
+                            }
+                            else
+                                this.Watchers.LocationsWatcher.Reset();
                         }
 
-                        // raise player leveled up a skill
-                        foreach (KeyValuePair<SkillType, IValueWatcher<int>> pair in playerTracker.GetChangedSkills())
+                        // raise time changed
+                        if (raiseWorldEvents && this.Watchers.TimeWatcher.IsChanged)
                         {
+                            int was = this.Watchers.TimeWatcher.PreviousValue;
+                            int now = this.Watchers.TimeWatcher.CurrentValue;
+                            this.Watchers.TimeWatcher.Reset();
+
                             if (this.Monitor.IsVerbose)
-                                this.Monitor.Log($"Events: player skill '{pair.Key}' changed from {pair.Value.PreviousValue} to {pair.Value.CurrentValue}.", LogLevel.Trace);
+                                this.Monitor.Log($"Events: time changed from {was} to {now}.", LogLevel.Trace);
 
-                            events.LevelChanged.Raise(new LevelChangedEventArgs(playerTracker.Player, pair.Key, pair.Value.PreviousValue, pair.Value.CurrentValue));
+                            events.TimeChanged.Raise(new TimeChangedEventArgs(was, now));
                         }
+                        else
+                            this.Watchers.TimeWatcher.Reset();
 
-                        // raise player inventory changed
-                        ItemStackChange[] changedItems = playerTracker.GetInventoryChanges().ToArray();
-                        if (changedItems.Any())
+                        // raise player events
+                        if (raiseWorldEvents)
                         {
-                            if (this.Monitor.IsVerbose)
-                                this.Monitor.Log("Events: player inventory changed.", LogLevel.Trace);
-                            events.InventoryChanged.Raise(new InventoryChangedEventArgs(playerTracker.Player, changedItems));
-                        }
+                            PlayerTracker playerTracker = this.Watchers.CurrentPlayerTracker;
 
-                        // raise mine level changed
-                        if (playerTracker.TryGetNewMineLevel(out int mineLevel))
-                        {
-                            if (this.Monitor.IsVerbose)
-                                this.Monitor.Log($"Context: mine level changed to {mineLevel}.", LogLevel.Trace);
+                            // raise current location changed
+                            if (playerTracker.TryGetNewLocation(out GameLocation newLocation))
+                            {
+                                if (this.Monitor.IsVerbose)
+                                    this.Monitor.Log($"Context: set location to {newLocation.Name}.", LogLevel.Trace);
+
+                                GameLocation oldLocation = playerTracker.LocationWatcher.PreviousValue;
+                                events.Warped.Raise(new WarpedEventArgs(playerTracker.Player, oldLocation, newLocation));
+                            }
+
+                            // raise player leveled up a skill
+                            foreach (KeyValuePair<SkillType, IValueWatcher<int>> pair in playerTracker.GetChangedSkills())
+                            {
+                                if (this.Monitor.IsVerbose)
+                                    this.Monitor.Log($"Events: player skill '{pair.Key}' changed from {pair.Value.PreviousValue} to {pair.Value.CurrentValue}.", LogLevel.Trace);
+
+                                events.LevelChanged.Raise(new LevelChangedEventArgs(playerTracker.Player, pair.Key, pair.Value.PreviousValue, pair.Value.CurrentValue));
+                            }
+
+                            // raise player inventory changed
+                            ItemStackChange[] changedItems = playerTracker.GetInventoryChanges().ToArray();
+                            if (changedItems.Any())
+                            {
+                                if (this.Monitor.IsVerbose)
+                                    this.Monitor.Log("Events: player inventory changed.", LogLevel.Trace);
+                                events.InventoryChanged.Raise(new InventoryChangedEventArgs(playerTracker.Player, changedItems));
+                            }
+
+                            // raise mine level changed
+                            if (playerTracker.TryGetNewMineLevel(out int mineLevel))
+                            {
+                                if (this.Monitor.IsVerbose)
+                                    this.Monitor.Log($"Context: mine level changed to {mineLevel}.", LogLevel.Trace);
+                            }
                         }
+                        this.Watchers.CurrentPlayerTracker?.Reset();
+
+                        // update save ID watcher
+                        this.Watchers.SaveIdWatcher.Reset();
                     }
-                    this.Watchers.CurrentPlayerTracker?.Reset();
-                }
 
-                // update save ID watcher
-                this.Watchers.SaveIdWatcher.Reset();
+                    /*********
+                    ** Game update
+                    *********/
+                    // game launched
+                    bool isFirstTick = SGame.TicksElapsed == 0;
+                    if (isFirstTick)
+                    {
+                        Context.IsGameLaunched = true;
+                        events.GameLaunched.Raise(new GameLaunchedEventArgs());
+                    }
+
+                    // preloaded
+                    if (Context.IsSaveLoaded && Context.LoadStage != LoadStage.Loaded && Context.LoadStage != LoadStage.Ready && Game1.dayOfMonth != 0)
+                        this.OnLoadStageChanged(LoadStage.Loaded);
+                }
 
                 /*********
-                ** Game update
+                ** Game update tick
                 *********/
-                // game launched
-                bool isFirstTick = SGame.TicksElapsed == 0;
-                if (isFirstTick)
                 {
-                    Context.IsGameLaunched = true;
-                    events.GameLaunched.Raise(new GameLaunchedEventArgs());
-                }
+                    bool isOneSecond = SGame.TicksElapsed % 60 == 0;
+                    events.UnvalidatedUpdateTicking.RaiseEmpty();
+                    events.UpdateTicking.RaiseEmpty();
+                    if (isOneSecond)
+                        events.OneSecondUpdateTicking.RaiseEmpty();
+                    try
+                    {
+                        this.Input.UpdateSuppression();
+                        SGame.TicksElapsed++;
+                        base.Update(gameTime);
+                    }
+                    catch (Exception ex)
+                    {
+                        this.MonitorForGame.Log($"An error occured in the base update loop: {ex.GetLogSummary()}", LogLevel.Error);
+                    }
 
-                // preloaded
-                if (Context.IsSaveLoaded && Context.LoadStage != LoadStage.Loaded && Context.LoadStage != LoadStage.Ready && Game1.dayOfMonth != 0)
-                    this.OnLoadStageChanged(LoadStage.Loaded);
-
-                // update tick
-                bool isOneSecond = SGame.TicksElapsed % 60 == 0;
-                events.UnvalidatedUpdateTicking.RaiseEmpty();
-                events.UpdateTicking.RaiseEmpty();
-                if (isOneSecond)
-                    events.OneSecondUpdateTicking.RaiseEmpty();
-                try
-                {
-                    this.Input.UpdateSuppression();
-                    SGame.TicksElapsed++;
-                    base.Update(gameTime);
+                    events.UnvalidatedUpdateTicked.RaiseEmpty();
+                    events.UpdateTicked.RaiseEmpty();
+                    if (isOneSecond)
+                        events.OneSecondUpdateTicked.RaiseEmpty();
                 }
-                catch (Exception ex)
-                {
-                    this.MonitorForGame.Log($"An error occured in the base update loop: {ex.GetLogSummary()}", LogLevel.Error);
-                }
-                events.UnvalidatedUpdateTicked.RaiseEmpty();
-                events.UpdateTicked.RaiseEmpty();
-                if (isOneSecond)
-                    events.OneSecondUpdateTicked.RaiseEmpty();
 
                 /*********
                 ** Update events
