@@ -8,7 +8,8 @@ The package...
 * packages the mod into your `Mods` folder when you rebuild the code (configurable);
 * creates a release zip (configurable);
 * configures Visual Studio to enable debugging into the code when the game is running (_Windows only_);
-* adds C# analyzers to warn for Stardew Valley-specific issues.
+* adds C# analyzers to warn for Stardew Valley-specific issues;
+* preconfigures common settings (e.g. enable line numbers in stack traces).
 
 ## Contents
 * [Install](#install)
@@ -233,6 +234,7 @@ _[Game path](#game-path)_ above.
 * For projects using the new `.csproj` format:
   * platform target is now set to x86 automatically to avoid mismatching platform target warnings;
   * added GAC to assembly search paths to fix references to XNA Framework.
+* Builds now include `.pdb` files by default, to enable line numbers in error stack traces.
 * Fixed `Newtonsoft.Json.pdb` included in release zips when Json.NET is referenced directly.
 * Fixed `<IgnoreModFilePatterns>` not working for `i18n` files.
 * Dropped support for older versions of SMAPI and Visual Studio.

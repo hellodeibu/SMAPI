@@ -17,6 +17,10 @@
     <Platforms>x86</Platforms>
     <PlatformTarget>x86</PlatformTarget>
 
+    <!-- include PDB file by default to enable line numbers in stack traces -->
+    <DebugType>pdbonly</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+
     <!-- recognise XNA Framework DLLs in the GAC (only affects mods using new csproj format) -->
     <AssemblySearchPaths>$(AssemblySearchPaths);{GAC}</AssemblySearchPaths>
 
