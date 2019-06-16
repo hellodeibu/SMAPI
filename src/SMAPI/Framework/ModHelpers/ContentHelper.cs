@@ -94,7 +94,7 @@ namespace StardewModdingAPI.Framework.ModHelpers
                         return this.GameContentManager.Load<T>(key, this.CurrentLocaleConstant, useCache: false);
 
                     case ContentSource.ModFolder:
-                        return this.ModContentManager.Load<T>(key, this.CurrentLocaleConstant, useCache: false);
+                        return this.ModContentManager.Load<T>(key, Constants.DefaultLanguage, useCache: false);
 
                     default:
                         throw new SContentLoadException($"{this.ModName} failed loading content asset '{key}' from {source}: unknown content source '{source}'.");

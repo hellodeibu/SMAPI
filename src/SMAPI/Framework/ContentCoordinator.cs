@@ -42,6 +42,9 @@ namespace StardewModdingAPI.Framework
         /// <summary>The loaded content managers (including the <see cref="MainContentManager"/>).</summary>
         private readonly IList<IContentManager> ContentManagers = new List<IContentManager>();
 
+        /// <summary>The language code for language-agnostic mod assets.</summary>
+        private readonly LocalizedContentManager.LanguageCode DefaultLanguage = Constants.DefaultLanguage;
+
         /// <summary>Whether the content coordinator has been disposed.</summary>
         private bool IsDisposed;
 
@@ -172,11 +175,9 @@ namespace StardewModdingAPI.Framework
 
         /// <summary>Get a copy of an asset from a mod folder.</summary>
         /// <typeparam name="T">The asset type.</typeparam>
-        /// <param name="internalKey">The internal asset key.</param>
         /// <param name="contentManagerID">The unique name for the content manager which should load this asset.</param>
         /// <param name="relativePath">The internal SMAPI asset key.</param>
-        /// <param name="language">The language code for which to load content.</param>
-        public T LoadManagedAsset<T>(string internalKey, string contentManagerID, string relativePath, LocalizedContentManager.LanguageCode language)
+        public T LoadManagedAsset<T>(string contentManagerID, string relativePath)
         {
             // get content manager
             IContentManager contentManager = this.ContentManagers.FirstOrDefault(p => p.IsNamespaced && p.Name == contentManagerID);
@@ -184,7 +185,7 @@ namespace StardewModdingAPI.Framework
                 throw new InvalidOperationException($"The '{contentManagerID}' prefix isn't handled by any mod.");
 
             // get fresh asset
-            return contentManager.Load<T>(relativePath, language, useCache: false);
+            return contentManager.Load<T>(relativePath, this.DefaultLanguage, useCache: false);
         }
 
         /// <summary>Purge assets from the cache that match one of the interceptors.</summary>

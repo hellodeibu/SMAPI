@@ -97,6 +97,9 @@ namespace StardewModdingAPI
         /// <summary>The game's assembly name.</summary>
         internal static string GameAssemblyName => Constants.Platform == Platform.Windows ? "Stardew Valley" : "StardewValley";
 
+        /// <summary>The language code for non-translated mod assets.</summary>
+        internal static LocalizedContentManager.LanguageCode DefaultLanguage { get; } = LocalizedContentManager.LanguageCode.en;
+
 
         /*********
         ** Internal methods

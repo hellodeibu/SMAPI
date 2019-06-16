@@ -30,7 +30,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
         private readonly IContentManager GameContentManager;
 
         /// <summary>The language code for language-agnostic mod assets.</summary>
-        private const LanguageCode NoLanguage = LanguageCode.en;
+        private readonly LanguageCode DefaultLanguage = Constants.DefaultLanguage;
 
 
         /*********
@@ -59,7 +59,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
         public override T Load<T>(string assetName)
         {
-            return this.Load<T>(assetName, ModContentManager.NoLanguage, useCache: false);
+            return this.Load<T>(assetName, this.DefaultLanguage, useCache: false);
         }
 
         /// <summary>Load an asset that has been processed by the content pipeline.</summary>
@@ -90,8 +90,8 @@ namespace StardewModdingAPI.Framework.ContentManagers
 
             // disable language handling
             // Mod files don't support automatic translation logic, so this should never happen.
-            if (language != ModContentManager.NoLanguage)
-                throw new InvalidOperationException("Caching is not supported by the mod content manager.");
+            if (language != this.DefaultLanguage)
+                throw new InvalidOperationException("Localised assets aren't supported by the mod content manager.");
 
             // resolve managed asset key
             {

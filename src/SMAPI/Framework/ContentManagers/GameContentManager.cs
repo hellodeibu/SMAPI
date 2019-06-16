@@ -82,7 +82,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
             // get managed asset
             if (this.Coordinator.TryParseManagedAssetKey(assetName, out string contentManagerID, out string relativePath))
             {
-                T managedAsset = this.Coordinator.LoadManagedAsset<T>(assetName, contentManagerID, relativePath, language);
+                T managedAsset = this.Coordinator.LoadManagedAsset<T>(contentManagerID, relativePath);
                 if (useCache)
                     this.Inject(assetName, managedAsset, language);
                 return managedAsset;
