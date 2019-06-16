@@ -146,6 +146,12 @@
     <Copy SourceFiles="$(TargetDir)\$(TargetName).xml" DestinationFolder="$(GamePath)\smapi-internal" />
   </Target>
 
+  <!-- common build settings -->
+  <PropertyGroup>
+    <DebugType>pdbonly</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
   <!-- launch SMAPI through Visual Studio -->
   <PropertyGroup>
     <StartAction>Program</StartAction>
