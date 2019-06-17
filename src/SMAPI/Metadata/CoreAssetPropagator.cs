@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI.Framework.Reflection;
 using StardewValley;
@@ -15,7 +14,6 @@ using StardewValley.Objects;
 using StardewValley.Projectiles;
 using StardewValley.TerrainFeatures;
 using xTile;
-using xTile.ObjectModel;
 using xTile.Tiles;
 
 namespace StardewModdingAPI.Metadata
@@ -150,26 +148,9 @@ namespace StardewModdingAPI.Metadata
                         foreach (var entry in new InteriorDoorDictionary(location))
                             location.interiorDoors.Add(entry);
 
-                        // update doors (derived from GameLocation.loadObjects)
+                        // update doors
                         location.doors.Clear();
-                        for (int x = 0; x < location.map.Layers[0].LayerWidth; ++x)
-                        {
-                            for (int y = 0; y < location.map.Layers[0].LayerHeight; ++y)
-                            {
-                                if (location.map.GetLayer("Buildings").Tiles[x, y] != null)
-                                {
-                                    location.map.GetLayer("Buildings").Tiles[x, y].Properties.TryGetValue("Action", out PropertyValue action);
-                                    if (action != null && action.ToString().Contains("Warp"))
-                                    {
-                                        string[] strArray = action.ToString().Split(' ');
-                                        if (strArray[0] == "WarpCommunityCenter")
-                                            location.doors.Add(new Point(x, y), "CommunityCenter");
-                                        else if ((location.Name != "Mountain" || x != 8 || y != 20) && strArray.Length > 2)
-                                            location.doors.Add(new Point(x, y), strArray[3]);
-                                    }
-                                }
-                            }
-                        }
+                        location.updateDoors();
 
                         anyChanged = true;
                     }
