@@ -238,7 +238,7 @@ _[Game path](#game-path)_ above.
 
 ## Release notes
 ### Upcoming release
-* Updated for SMAPI 3.0 and Stardew Valley 1.4. (The beta is backwards-compatible with previous versions.)
+* Updated for SMAPI 3.0 and Stardew Valley 1.4.
 * If the project contains an `assets` folder, its contents are now included in the mod automatically.
 * For projects using the new `.csproj` format:
   * platform target is now set to x86 automatically to avoid mismatching platform target warnings;
