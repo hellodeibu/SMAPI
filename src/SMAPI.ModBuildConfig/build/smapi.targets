@@ -29,6 +29,7 @@
     <ModZipPath Condition="'$(ModZipPath)' == ''">$(TargetDir)</ModZipPath>
     <EnableModDeploy Condition="'$(EnableModDeploy)' == ''">True</EnableModDeploy>
     <EnableModZip Condition="'$(EnableModZip)' == ''">True</EnableModZip>
+    <EnableGameDebugging Condition="$(EnableGameDebugging) == ''">True</EnableGameDebugging>
     <CopyModReferencesToBuildOutput Condition="'$(CopyModReferencesToBuildOutput)' == ''">False</CopyModReferencesToBuildOutput>
   </PropertyGroup>
 
@@ -129,7 +130,7 @@
       </ItemGroup>
 
       <!-- launch game for debugging -->
-      <PropertyGroup>
+      <PropertyGroup Condition="$(EnableGameDebugging) == 'True'">
         <StartAction>Program</StartAction>
         <StartProgram>$(GamePath)\StardewModdingAPI.exe</StartProgram>
         <StartWorkingDirectory>$(GamePath)</StartWorkingDirectory>

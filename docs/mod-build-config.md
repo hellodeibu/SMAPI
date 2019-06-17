@@ -68,6 +68,14 @@ Or only create it in release builds with this:
 <EnableModZip Condition="$(Configuration) != 'Release'">False</EnableModZip>
 ```
 
+### Debug game
+The package automatically configures Visual Studio to launch/debug the game when you launch/debug
+the project. To disable that, add this above the first `</PropertyGroup>` in your `.csproj`:
+
+```xml
+<EnableGameDebugging>False</EnableGameDebugging>
+```
+
 ### Game path
 The package usually detects where your game is installed automatically. If it can't find your game
 or you have multiple installs, you can specify the path yourself. There's two ways to do that:
@@ -148,6 +156,7 @@ You can use the package in non-mod projects too (e.g. unit tests or framework DL
 disable deploying the mod and creating a release zip:
 
 ```xml
+<EnableGameDebugging>False</EnableGameDebugging>
 <EnableModDeploy>False</EnableModDeploy>
 <EnableModZip>False</EnableModZip>
 ```
@@ -235,6 +244,7 @@ _[Game path](#game-path)_ above.
   * platform target is now set to x86 automatically to avoid mismatching platform target warnings;
   * added GAC to assembly search paths to fix references to XNA Framework.
 * Builds now include `.pdb` files by default, to enable line numbers in error stack traces.
+* You can now optionally disable game debugging config.
 * Fixed `Newtonsoft.Json.pdb` included in release zips when Json.NET is referenced directly.
 * Fixed `<IgnoreModFilePatterns>` not working for `i18n` files.
 * Dropped support for older versions of SMAPI and Visual Studio.
