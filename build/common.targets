@@ -30,11 +30,6 @@
     <DefineConstants Condition="$(OS) == 'Windows_NT'">$(DefineConstants);SMAPI_FOR_WINDOWS</DefineConstants>
   </PropertyGroup>
 
-  <!-- add common references -->
-  <ItemGroup>
-    <Reference Condition="'$(OS)' == 'Windows_NT' AND '$(MSBuildProjectName)' != 'SMAPI.Toolkit' AND '$(MSBuildProjectName)' != 'SMAPI.Toolkit.CoreInterfaces'" Include="System.Management" />
-  </ItemGroup>
-
   <!-- add game references-->
   <Choose>
     <When Condition="'$(MSBuildProjectName)' == 'SMAPI' OR '$(MSBuildProjectName)' == 'SMAPI.Mods.ConsoleCommands' OR '$(MSBuildProjectName)' == 'SMAPI.Mods.SaveBackup' OR '$(MSBuildProjectName)' == 'SMAPI.Tests'">

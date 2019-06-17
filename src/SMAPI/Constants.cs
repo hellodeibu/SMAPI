@@ -5,7 +5,7 @@ using System.Reflection;
 using StardewModdingAPI.Enums;
 using StardewModdingAPI.Framework;
 using StardewModdingAPI.Framework.ModLoading;
-using StardewModdingAPI.Internal;
+using StardewModdingAPI.Toolkit.Utilities;
 using StardewValley;
 
 namespace StardewModdingAPI

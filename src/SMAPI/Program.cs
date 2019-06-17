@@ -7,7 +7,7 @@ using System.Threading;
 #if SMAPI_FOR_WINDOWS
 #endif
 using StardewModdingAPI.Framework;
-using StardewModdingAPI.Internal;
+using StardewModdingAPI.Toolkit.Utilities;
 
 namespace StardewModdingAPI
 {
