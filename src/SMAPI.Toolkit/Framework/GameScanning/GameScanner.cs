@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Xml.Linq;
+using System.Xml.XPath;
 using StardewModdingAPI.Toolkit.Utilities;
 #if SMAPI_FOR_WINDOWS
 using Microsoft.Win32;
@@ -19,12 +21,18 @@ namespace StardewModdingAPI.Toolkit.Framework.GameScanning
         /// <remarks>This checks default game locations, and on Windows checks the Windows registry for GOG/Steam install data. A folder is considered 'valid' if it contains the Stardew Valley executable for the current OS.</remarks>
         public IEnumerable<DirectoryInfo> Scan()
         {
-            // get unique candidate paths
+            // get OS info
             Platform platform = EnvironmentUtility.DetectPlatform();
             string executableFilename = EnvironmentUtility.GetExecutableName(platform);
-            IEnumerable<string> paths = this.GetDefaultInstallPaths(platform).Select(PathUtilities.NormalisePathSeparators).Distinct(StringComparer.InvariantCultureIgnoreCase);
 
-            // get valid folders
+            // get install paths
+            IEnumerable<string> paths = this
+                .GetCustomInstallPaths(platform)
+                .Concat(this.GetDefaultInstallPaths(platform))
+                .Select(PathUtilities.NormalisePathSeparators)
+                .Distinct(StringComparer.InvariantCultureIgnoreCase);
+
+            // yield valid folders
             foreach (string path in paths)
             {
                 DirectoryInfo folder = new DirectoryInfo(path);
@@ -96,6 +104,38 @@ namespace StardewModdingAPI.Toolkit.Framework.GameScanning
                 default:
                     throw new InvalidOperationException($"Unknown platform '{platform}'.");
             }
+        }
+
+        /// <summary>Get the custom install path from the <c>stardewvalley.targets</c> file in the home directory, if any.</summary>
+        /// <param name="platform">The target platform.</param>
+        private IEnumerable<string> GetCustomInstallPaths(Platform platform)
+        {
+            // get home path
+            string homePath = Environment.GetEnvironmentVariable(platform == Platform.Windows ? "USERPROFILE" : "HOME");
+            if (string.IsNullOrWhiteSpace(homePath))
+                yield break;
+
+            // get targets file
+            FileInfo file = new FileInfo(Path.Combine(homePath, "stardewvalley.targets"));
+            if (!file.Exists)
+                yield break;
+
+            // parse file
+            XElement root;
+            try
+            {
+                using (FileStream stream = file.OpenRead())
+                    root = XElement.Load(stream);
+            }
+            catch
+            {
+                yield break;
+            }
+
+            // get install path
+            XElement element = root.XPathSelectElement("//*[local-name() = 'GamePath']"); // can't use '//GamePath' due to the default namespace
+            if (!string.IsNullOrWhiteSpace(element?.Value))
+                yield return element.Value.Trim();
         }
 
 #if SMAPI_FOR_WINDOWS
