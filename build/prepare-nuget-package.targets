@@ -11,6 +11,7 @@
     </PropertyGroup>
     <RemoveDir Directories="$(PackagePath)" />
     <Copy SourceFiles="$(ProjectDir)/package.nuspec" DestinationFolder="$(PackagePath)" />
+    <Copy SourceFiles="$(SolutionDir)/../build/find-game-folder.targets" DestinationFolder="$(PackagePath)/build" />
     <Copy SourceFiles="$(ProjectDir)/build/smapi.targets" DestinationFiles="$(PackagePath)/build/Pathoschild.Stardew.ModBuildConfig.targets" />
     <Copy SourceFiles="$(TargetDir)/Newtonsoft.Json.dll" DestinationFolder="$(PackagePath)/build" />
     <Copy SourceFiles="$(TargetDir)/SMAPI.ModBuildConfig.dll" DestinationFolder="$(PackagePath)/build" />
