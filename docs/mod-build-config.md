@@ -49,6 +49,12 @@ non-mod projects like unit tests, you can set this property:
 <CopyModReferencesToBuildOutput>true</CopyModReferencesToBuildOutput>
 ```
 
+If your mod uses [Harmony](https://github.com/pardeike/Harmony) (not recommended for most mods),
+the package can add a reference to SMAPI's Harmony DLL for you:
+```xml
+<EnableHarmony>true</EnableHarmony>
+```
+
 ### Copy files into the `Mods` folder and create release zip
 <dl>
 <dt>Files considered part of your mod</dt>
@@ -269,6 +275,7 @@ If you need to copy the referenced DLLs into your build output, add this too:
   * added GAC to assembly search paths to fix references to XNA Framework.
 * Added option to disable game debugging config.
 * Added `.pdb` files to builds by default (to enable line numbers in error stack traces).
+* Added optional Harmony reference.
 * Fixed `Newtonsoft.Json.pdb` included in release zips when Json.NET is referenced directly.
 * Fixed `<IgnoreModFilePatterns>` not working for `i18n` files.
 * Dropped support for older versions of SMAPI and Visual Studio.

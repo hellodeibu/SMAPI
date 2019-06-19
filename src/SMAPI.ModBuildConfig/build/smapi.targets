@@ -24,6 +24,7 @@
     <ModZipPath Condition="'$(ModZipPath)' == ''">$(TargetDir)</ModZipPath>
     <EnableModDeploy Condition="'$(EnableModDeploy)' == ''">true</EnableModDeploy>
     <EnableModZip Condition="'$(EnableModZip)' == ''">true</EnableModZip>
+    <EnableHarmony Condition="'$(EnableModZip)' == ''">false</EnableHarmony>
     <EnableGameDebugging Condition="$(EnableGameDebugging) == ''">true</EnableGameDebugging>
     <CopyModReferencesToBuildOutput Condition="'$(CopyModReferencesToBuildOutput)' == ''">false</CopyModReferencesToBuildOutput>
   </PropertyGroup>
@@ -32,6 +33,13 @@
   <!--*********************************************
   ** Inject the assembly references and debugging configuration
   **********************************************-->
+  <ItemGroup>
+    <Reference Include="0Harmony" Condition="'$(EnableHarmony)' == 'true'">
+      <HintPath>$(GamePath)\smapi-internal\0Harmony.dll</HintPath>
+      <Private>false</Private>
+      <Private Condition="$(CopyModReferencesToBuildOutput)">true</Private>
+    </Reference>
+  </ItemGroup>
   <Choose>
     <When Condition="$(OS) == 'Windows_NT'">
       <!-- references -->
