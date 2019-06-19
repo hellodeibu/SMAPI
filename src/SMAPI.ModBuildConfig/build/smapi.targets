@@ -138,7 +138,7 @@
   <Target Name="BeforeBuild">
     <Error Condition="'$(OS)' != 'OSX' AND '$(OS)' != 'Unix' AND '$(OS)' != 'Windows_NT'" Text="The mod build package doesn't recognise OS type '$(OS)'." />
 
-    <Error Condition="!Exists('$(GamePath)')" Text="The mod build package can't find your game folder. You can specify where to find it; see https://smapi.io/buildmsg/game-path." />
+    <Error Condition="!Exists('$(GamePath)')" Text="The mod build package can't find your game folder. You can specify where to find it; see https://smapi.io/buildmsg/custom-game-path." />
     <Error Condition="'$(OS)' == 'Windows_NT' AND !Exists('$(GamePath)\Stardew Valley.exe')" Text="The mod build package found a game folder at $(GamePath), but it doesn't contain the Stardew Valley.exe file. If this folder is invalid, delete it and the package will autodetect another game install path." />
     <Error Condition="'$(OS)' != 'Windows_NT' AND !Exists('$(GamePath)\StardewValley.exe')" Text="The mod build package found a game folder at $(GamePath), but it doesn't contain the StardewValley.exe file. If this folder is invalid, delete it and the package will autodetect another game install path." />
     <Error Condition="!Exists('$(GamePath)\StardewModdingAPI.exe')" Text="The mod build package found a game folder at $(GamePath), but it doesn't contain SMAPI. You need to install SMAPI before building the mod." />
