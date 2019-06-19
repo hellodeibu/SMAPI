@@ -38,4 +38,10 @@
       </PropertyGroup>
     </When>
   </Choose>
+
+  <!-- set game metadata -->
+  <PropertyGroup>
+    <GameExecutableName>Stardew Valley</GameExecutableName>
+    <GameExecutableName Condition="$(OS) != 'Windows_NT'">StardewValley</GameExecutableName>
+  </PropertyGroup>
 </Project>

@@ -1,4 +1,4 @@
-﻿The **mod build package** is an open-source NuGet package which automates the MSBuild configuration
+The **mod build package** is an open-source NuGet package which automates the MSBuild configuration
 for SMAPI mods and related tools. The package is fully compatible with Linux, Mac, and Windows.
 
 ## Contents
@@ -30,8 +30,14 @@ works by editing your mod's `.csproj` file, and adding the given properties betw
 
 ### Detect game path
 The package finds your game folder by scanning the default install paths and Windows registry. It
-adds a `$(GamePath)` variable with the detected path for use in `.csproj` file (e.g. to load a
-custom game DLL). If this doesn't work automatically, see [_set the game path_](#set-the-game-path).
+adds two MSBuild properties for use in your `.csproj` file if needed:
+
+property | description
+-------- | -----------
+`$(GamePath)` | The absolute path to the detected game folder.
+`$(GameExecutableName)` | The game's executable name for the current OS (`Stardew Valley` on Windows, or `StardewValley` on Linux/Mac).
+
+If you get a build error saying it can't find your game, see [_set the game path_](#set-the-game-path).
 
 ### Add assembly references
 The package adds assembly references to SMAPI, Stardew Valley, xTile, and MonoGame (Linux/Mac) or XNA
@@ -256,12 +262,13 @@ If you need to copy the referenced DLLs into your build output, add this too:
 ## Release notes
 ### Upcoming release
 * Updated for SMAPI 3.0 and Stardew Valley 1.4.
-* If the project contains an `assets` folder, its contents are now included in the mod automatically.
-* For projects using the new `.csproj` format:
+* Added automatic support for `assets` folders.
+* Added `$(GameExecutableName)` MSBuild variable.
+* Added support for projects using the simplified `.csproj` format:
   * platform target is now set to x86 automatically to avoid mismatching platform target warnings;
   * added GAC to assembly search paths to fix references to XNA Framework.
-* Builds now include `.pdb` files by default, to enable line numbers in error stack traces.
-* You can now optionally disable game debugging config.
+* Added option to disable game debugging config.
+* Added `.pdb` files to builds by default (to enable line numbers in error stack traces).
 * Fixed `Newtonsoft.Json.pdb` included in release zips when Json.NET is referenced directly.
 * Fixed `<IgnoreModFilePatterns>` not working for `i18n` files.
 * Dropped support for older versions of SMAPI and Visual Studio.
