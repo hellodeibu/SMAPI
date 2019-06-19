@@ -46,7 +46,7 @@ Framework (Windows). It automatically adjusts depending on which OS you're compi
 The assemblies aren't copied to the build output, since mods loaded by SMAPI won't need them. For
 non-mod projects like unit tests, you can set this property:
 ```xml
-<CopyModReferencesToBuildOutput>True</CopyModReferencesToBuildOutput>
+<CopyModReferencesToBuildOutput>true</CopyModReferencesToBuildOutput>
 ```
 
 ### Copy files into the `Mods` folder and create release zip
@@ -82,7 +82,7 @@ You can change the folder name:
 
 Or disable deploying the files:
 ```xml
-<EnableModDeploy>False</EnableModDeploy>
+<EnableModDeploy>false</EnableModDeploy>
 ```
 
 </dd>
@@ -99,7 +99,7 @@ You can change the folder path where the zip is created:
 
 Or disable zip creation:
 ```xml
-<EnableModZip>False</EnableModZip>
+<EnableModZip>false</EnableModZip>
 ```
 
 </dd>
@@ -117,7 +117,7 @@ This is disabled on Linux/Mac due to limitations with the Mono wrapper.
 To disable game debugging (only needed for some non-mod projects):
 
 ```xml
-<EnableGameDebugging>False</EnableGameDebugging>
+<EnableGameDebugging>false</EnableGameDebugging>
 ```
 
 ### Preconfigure common settings
@@ -249,14 +249,14 @@ You can use the package in non-mod projects too (e.g. unit tests or framework DL
 the mod-related package features:
 
 ```xml
-<EnableGameDebugging>False</EnableGameDebugging>
-<EnableModDeploy>False</EnableModDeploy>
-<EnableModZip>False</EnableModZip>
+<EnableGameDebugging>false</EnableGameDebugging>
+<EnableModDeploy>false</EnableModDeploy>
+<EnableModZip>false</EnableModZip>
 ```
 
 If you need to copy the referenced DLLs into your build output, add this too:
 ```xml
-<CopyModReferencesToBuildOutput>True</CopyModReferencesToBuildOutput>
+<CopyModReferencesToBuildOutput>true</CopyModReferencesToBuildOutput>
 ```
 
 ## Release notes

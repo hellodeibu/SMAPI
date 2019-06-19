@@ -22,10 +22,10 @@
     <!-- set default package options -->
     <ModFolderName Condition="'$(ModFolderName)' == ''">$(MSBuildProjectName)</ModFolderName>
     <ModZipPath Condition="'$(ModZipPath)' == ''">$(TargetDir)</ModZipPath>
-    <EnableModDeploy Condition="'$(EnableModDeploy)' == ''">True</EnableModDeploy>
-    <EnableModZip Condition="'$(EnableModZip)' == ''">True</EnableModZip>
-    <EnableGameDebugging Condition="$(EnableGameDebugging) == ''">True</EnableGameDebugging>
-    <CopyModReferencesToBuildOutput Condition="'$(CopyModReferencesToBuildOutput)' == ''">False</CopyModReferencesToBuildOutput>
+    <EnableModDeploy Condition="'$(EnableModDeploy)' == ''">true</EnableModDeploy>
+    <EnableModZip Condition="'$(EnableModZip)' == ''">true</EnableModZip>
+    <EnableGameDebugging Condition="$(EnableGameDebugging) == ''">true</EnableGameDebugging>
+    <CopyModReferencesToBuildOutput Condition="'$(CopyModReferencesToBuildOutput)' == ''">false</CopyModReferencesToBuildOutput>
   </PropertyGroup>
 
 
@@ -86,7 +86,7 @@
       </ItemGroup>
 
       <!-- launch game for debugging -->
-      <PropertyGroup Condition="$(EnableGameDebugging) == 'True'">
+      <PropertyGroup Condition="$(EnableGameDebugging) == 'true'">
         <StartAction>Program</StartAction>
         <StartProgram>$(GamePath)\StardewModdingAPI.exe</StartProgram>
         <StartWorkingDirectory>$(GamePath)</StartWorkingDirectory>
