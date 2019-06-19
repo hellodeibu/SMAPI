@@ -1,39 +1,73 @@
-The **mod build package** is an open-source NuGet package which automates the MSBuild configuration
-for SMAPI mods and related tools.
+﻿The **mod build package** is an open-source NuGet package which automates the MSBuild configuration
+for SMAPI mods and related tools. The package is fully compatible with Linux, Mac, and Windows.
 
 ## Contents
-* [Install](#install)
 * [Use](#use)
-* [Configure](#configure)
-* [Troubleshoot](#troubleshoot)
-* [Code analysis warnings](#code-analysis-warnings)
+* [Features](#features)
+  * [Detect game path](#detect-game-path)
+  * [Add assembly references](#add-assembly-references)
+  * [Copy files into the `Mods` folder and create release zip](#copy-files-into-the-mods-folder-and-create-release-zip)
+  * [Launch or debug game](#launch-or-debug-game)
+  * [Preconfigure common settings](#preconfigure-common-settings)
+  * [Add code warnings](#add-code-warnings)
+* [Code warnings](#code-warnings)
+* [Special cases](#special-cases)
+  * [Custom game path](#custom-game-path)
+  * [Non-mod projects](#non-mod-projects)
 * [Release notes](#release-notes)
 
-## Install
+## Use
 1. Create an empty library project.
 2. Reference the [`Pathoschild.Stardew.ModBuildConfig` NuGet package](https://www.nuget.org/packages/Pathoschild.Stardew.ModBuildConfig).
 3. [Write your code](https://stardewvalleywiki.com/Modding:Creating_a_SMAPI_mod).
 4. Compile on any platform.
+5. Run the game to play with your mod.
 
-## Use
-Once you reference it, the package automatically...
+## Features
+The package automatically makes the changes listed below. In some cases you can configure how it
+works by editing your mod's `.csproj` file, and adding the given properties between the first
+`<PropertyGroup>` and `</PropertyGroup>` tags.
 
-* detects your game install path (and creates a `$(GamePath)` variable if you need to use it in your `.csproj` file);
-* adds the assembly references needed (with automatic support for Linux/Mac/Windows);
-* packages the mod into your `Mods` folder when you rebuild the code;
-* creates a release zip;
-* configures Visual Studio to enable debugging into the code when the game is running (_Windows only_);
-* adds C# analyzers to warn for Stardew Valley-specific issues;
-* preconfigures common settings (e.g. enable line numbers in stack traces).
+### Detect game path
+The package finds your game folder by scanning the default install paths and Windows registry. It
+adds a `$(GamePath)` variable with the detected path for use in `.csproj` file (e.g. to load a
+custom game DLL). If this doesn't work automatically, see [_set the game path_](#set-the-game-path).
 
-## Configure
-Most mods use the package as-is, but you can configure its functionality by editing your mod's
-`.csproj` file to add the properties shown below between the first `<PropertyGroup>` and
-`</PropertyGroup>` tags.
+### Add assembly references
+The package adds assembly references to SMAPI, Stardew Valley, xTile, and MonoGame (Linux/Mac) or XNA
+Framework (Windows). It automatically adjusts depending on which OS you're compiling it on.
 
-### Copy files into the `Mods` folder
-The mod files are copied into your game's `Mods` folder when you rebuild the code, with a subfolder
-matching the mod's project name (see [included files](#which-files-are-part-of-your-mod)).
+The assemblies aren't copied to the build output, since mods loaded by SMAPI won't need them. For
+non-mod projects like unit tests, you can set this property:
+```xml
+<CopyModReferencesToBuildOutput>True</CopyModReferencesToBuildOutput>
+```
+
+### Copy files into the `Mods` folder and create release zip
+<dl>
+<dt>Files considered part of your mod</dt>
+<dd>
+
+These files are selected by default: `manifest.json`,
+[`i18n` files](https://stardewvalleywiki.com/Modding:Translations) (if any), the `assets` folder
+(if any), and all files in the build output. You can select custom files by [adding them to the
+build output](https://stackoverflow.com/a/10828462/262123). (If your project references another mod,
+make sure the reference is [_not_ marked 'copy local'](https://msdn.microsoft.com/en-us/library/t1zz5y8c(v=vs.100).aspx).)
+
+You can deselect a file by removing it from the build output. For a default file, you can set the
+property below to a comma-delimited list of regex patterns to ignore. For crossplatform
+compatibility, you should replace path delimiters with `[/\\]`.
+
+```xml
+<IgnoreModFilePatterns>\.txt$, \.pdf$, assets[/\\]paths.png</IgnoreModFilePatterns>
+```
+
+</dd>
+<dt>Copy files into the `Mods` folder</dt>
+<dd>
+
+The package copies the selected files into your game's `Mods` folder when you rebuild the code,
+with a subfolder matching the mod's project name.
 
 You can change the folder name:
 ```xml
@@ -45,114 +79,51 @@ Or disable deploying the files:
 <EnableModDeploy>False</EnableModDeploy>
 ```
 
-### Create release zip
-A zip file is created in your project's `bin` folder when you rebuild the code, in the format
-recommended for sites like Nexus Mods (see [included files](#which-files-are-part-of-your-mod)).
-The zip filename is set by `ModFolderName` (see previous).
+</dd>
+<dt>Create release zip</dt>
+<dd>
+
+The package adds a zip file in your project's `bin` folder when you rebuild the code, in the format
+recommended for sites like Nexus Mods. The zip filename can be changed using `ModFolderName` above.
 
 You can change the folder path where the zip is created:
 ```xml
 <ModZipPath>$(SolutionDir)\_releases</ModZipPath>
 ```
 
-Or disable zip creation (or only enable it for release-mode builds):
+Or disable zip creation:
 ```xml
 <EnableModZip>False</EnableModZip>
-<EnableModZip Condition="$(Configuration) != 'Release'">False</EnableModZip>
 ```
 
-### Which files are part of your mod?
-These files are part of your mod by default: `manifest.json`,
-[`i18n` files](https://stardewvalleywiki.com/Modding:Translations) (if any), the `assets` folder
-(if any), and all files in the build output. For example, compiling the mod will copy those files
-into your game's `Mods` folder and add them to the release zip (see previous sections).
-
-Add custom files by [adding them to the build output](https://stackoverflow.com/a/10828462/262123).
-(If your project references another mod, make sure the reference is [_not_ marked 'copy local'](https://msdn.microsoft.com/en-us/library/t1zz5y8c(v=vs.100).aspx).)
-
-To remove a file, either remove it from the build output _or_ set this property to a
-comma-delimited list of regular expression patterns. If any pattern matches a file's
-relative path in your mod folder, that file won't be included (this works with default files like
-`assets` too.)
-
-```xml
-<IgnoreModFilePatterns>\.txt$, \.pdf$</IgnoreModFilePatterns>
-```
-
-Note that path delimiters are _not_ normalised in `<IgnoreFilePatterns>`. For crossplatform
-compatibility, you should format slashes like `assets[/\\]paths.png`.
+</dd>
+</dl>
 
 ### Launch or debug game
-The package configures Visual Studio to launch/debug the game when you launch/debug the project.
+On Windows only, the package configures Visual Studio so you can launch the game and attach a
+debugger using _Debug > Start Debugging_ or _Debug > Start Without Debugging_. This lets you [set
+breakpoints](https://docs.microsoft.com/en-us/visualstudio/debugger/using-breakpoints?view=vs-2019)
+in your code while the game is running, or [make simple changes to the mod code without needing to
+restart the game](https://docs.microsoft.com/en-us/visualstudio/debugger/edit-and-continue?view=vs-2019).
 
-You can disable that:
+This is disabled on Linux/Mac due to limitations with the Mono wrapper.
 
-```xml
-<EnableGameDebugging>False</EnableGameDebugging>
-```
-
-### Non-mod projects
-You can use the package in non-mod projects too (e.g. unit tests or framework DLLs). Just disable
-the mod-related package features:
+To disable game debugging (only needed for some non-mod projects):
 
 ```xml
 <EnableGameDebugging>False</EnableGameDebugging>
-<EnableModDeploy>False</EnableModDeploy>
-<EnableModZip>False</EnableModZip>
 ```
 
-If you need to copy the referenced DLLs into your build output, add this too:
-```xml
-<CopyModReferencesToBuildOutput>True</CopyModReferencesToBuildOutput>
-```
+### Preconfigure common settings
+The package automatically enables PDB files, so error logs show line numbers for simpler debugging.
 
-## Troubleshoot
-### Set the game path
-The package usually detects where your game is installed automatically. If it can't find your game
-or you have multiple installs, you can specify the path yourself. There's two ways to do that:
+For projects using the simplified `.csproj` format, it also enables the GAC (to support XNA
+Framework) and sets the build to x86 mode (to avoid 'mismatch between the processor architecture' warnings due to
+  the game being x86).
 
-* **Option 1: global game path (recommended).**  
-  _This will apply to every project that uses the package._
-
-  1. Get the full folder path containing the Stardew Valley executable.
-  2. Create this file:
-  
-     platform  | path
-     --------- | ----
-     Linux/Mac | `~/stardewvalley.targets`
-     Windows   | `%USERPROFILE%\stardewvalley.targets`
-
-  3. Save the file with this content:
-
-     ```xml
-     <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-        <PropertyGroup>
-          <GamePath>PATH_HERE</GamePath>
-        </PropertyGroup>
-     </Project>
-     ```
-
-  4. Replace `PATH_HERE` with your game path.
-
-* **Option 2: path in the project file.**  
-  _You'll need to do this for each project that uses the package._
-
-  1. Get the folder path containing the Stardew Valley `.exe` file.
-  2. Add this to your `.csproj` file under the `<Project` line:
-
-     ```xml
-     <PropertyGroup>
-       <GamePath>PATH_HERE</GamePath>
-     </PropertyGroup>
-     ```
-
-  3. Replace `PATH_HERE` with your custom game install path.
-
-The configuration will check your custom path first, then fall back to the default paths (so it'll
-still compile on a different computer).
-
-You access the game path via `$(GamePath)` in MSBuild properties, if you need to reference another
-file in the game folder.
+### Add code warnings
+The package runs code analysis on your mod and raises warnings for some common errors or pitfalls.
+See [_code warnings_](#code-warnings) for more info.
 
 ## Code warnings
 ### Overview
@@ -218,6 +189,69 @@ Warning text:
 > The '{{old field}}' field is obsolete and should be replaced with '{{new field}}'.
 
 Your code accesses a field which is obsolete or no longer works. Use the suggested field instead.
+
+## Special cases
+### Custom game path
+The package usually detects where your game is installed automatically. If it can't find your game
+or you have multiple installs, you can specify the path yourself. There's two ways to do that:
+
+* **Option 1: global game path (recommended).**  
+  _This will apply to every project that uses the package._
+
+  1. Get the full folder path containing the Stardew Valley executable.
+  2. Create this file:
+  
+     platform  | path
+     --------- | ----
+     Linux/Mac | `~/stardewvalley.targets`
+     Windows   | `%USERPROFILE%\stardewvalley.targets`
+
+  3. Save the file with this content:
+
+     ```xml
+     <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+        <PropertyGroup>
+          <GamePath>PATH_HERE</GamePath>
+        </PropertyGroup>
+     </Project>
+     ```
+
+  4. Replace `PATH_HERE` with your game path.
+
+* **Option 2: path in the project file.**  
+  _You'll need to do this for each project that uses the package._
+
+  1. Get the folder path containing the Stardew Valley `.exe` file.
+  2. Add this to your `.csproj` file under the `<Project` line:
+
+     ```xml
+     <PropertyGroup>
+       <GamePath>PATH_HERE</GamePath>
+     </PropertyGroup>
+     ```
+
+  3. Replace `PATH_HERE` with your custom game install path.
+
+The configuration will check your custom path first, then fall back to the default paths (so it'll
+still compile on a different computer).
+
+You access the game path via `$(GamePath)` in MSBuild properties, if you need to reference another
+file in the game folder.
+
+### Non-mod projects
+You can use the package in non-mod projects too (e.g. unit tests or framework DLLs). Just disable
+the mod-related package features:
+
+```xml
+<EnableGameDebugging>False</EnableGameDebugging>
+<EnableModDeploy>False</EnableModDeploy>
+<EnableModZip>False</EnableModZip>
+```
+
+If you need to copy the referenced DLLs into your build output, add this too:
+```xml
+<CopyModReferencesToBuildOutput>True</CopyModReferencesToBuildOutput>
+```
 
 ## Release notes
 ### Upcoming release
