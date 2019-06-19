@@ -23,6 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="$(GameExecutableName)">
+      <HintPath>$(GamePath)\$(GameExecutableName).exe</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="System.Numerics">
       <Private>True</Private>
     </Reference>
@@ -30,6 +34,64 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Windows.Forms" Condition="$(OS) == 'Windows_NT'" />
+  </ItemGroup>
+
+  <Choose>
+    <!-- Windows -->
+    <When Condition="$(OS) == 'Windows_NT'">
+      <ItemGroup>
+        <Reference Include="StardewValley.GameData">
+          <HintPath>$(GamePath)\StardewValley.GameData.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="Netcode">
+          <HintPath>$(GamePath)\Netcode.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86">
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="Microsoft.Xna.Framework.Game, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86">
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="Microsoft.Xna.Framework.Graphics, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86">
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="Microsoft.Xna.Framework.Xact, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86">
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+
+    <!-- Linux/Mac -->
+    <Otherwise>
+      <ItemGroup>
+        <Reference Include="StardewValley.GameData.MonoGame">
+          <HintPath>$(GamePath)\StardewValley.GameData.MonoGame.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="MonoGame.Framework">
+          <HintPath>$(GamePath)\MonoGame.Framework.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+
+  <!-- common -->
+  <ItemGroup>
+    <Reference Include="GalaxyCSharp">
+      <HintPath>$(GamePath)\GalaxyCSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Lidgren.Network">
+      <HintPath>$(GamePath)\Lidgren.Network.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="xTile">
+      <HintPath>$(GamePath)\xTile.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
