@@ -47,8 +47,7 @@
     </div>
     <div id="mod-count" v-show="showAdvanced">
         <div v-if="visibleStats.total > 0">
-            {{visibleStats.total}} mods shown ({{Math.round((visibleStats.compatible + visibleStats.workaround) / visibleStats.total * 100)}}% compatible or have a workaround, {{Math.round((visibleStats.soon + visibleStats.broken) / visibleStats.total * 100)}}% broken, {{Math.round(visibleStats.abandoned / visibleStats.total * 100)}}% obsolete).<br />
-            SMAPI 3.0 (upcoming): {{Math.round(visibleStats.smapi3_ok / visibleStats.total * 100)}}% ready, {{Math.round(visibleStats.smapi3_soon / visibleStats.total * 100)}}% soon, {{Math.round(visibleStats.smapi3_broken / visibleStats.total * 100)}}% broken, {{Math.round(visibleStats.smapi3_unknown / visibleStats.total * 100)}}% unknown.
+            {{visibleStats.total}} mods shown ({{Math.round((visibleStats.compatible + visibleStats.workaround) / visibleStats.total * 100)}}% compatible or have a workaround, {{Math.round((visibleStats.soon + visibleStats.broken) / visibleStats.total * 100)}}% broken, {{Math.round(visibleStats.abandoned / visibleStats.total * 100)}}% obsolete).
         </div>
         <span v-else>No matching mods found.</span>
     </div>
@@ -61,7 +60,6 @@
                 <th>compatibility</th>
                 <th v-show="showAdvanced">broke in</th>
                 <th v-show="showAdvanced">code</th>
-                <th><small><a href="http://smapi.io/3.0">3.0 ready</a></small></th>
                 <th>&nbsp;</th>
             </tr>
         </thead>
@@ -92,12 +90,6 @@
                 <td v-show="showAdvanced">
                     <span v-if="mod.SourceUrl"><a v-bind:href="mod.SourceUrl">source</a></span>
                     <span v-else class="mod-closed-source">no source</span>
-                </td>
-                <td class="smapi-3-col">
-                    <small v-if="mod.LatestCompatibility.Status == 'ok' || mod.LatestCompatibility.Status == 'unofficial' || mod.LatestCompatibility.Status == 'optional' || mod.Smapi3Status == 'ok' || mod.Smapi3Status == 'soon' || mod.Smapi3Url">
-                        <a v-if="mod.Smapi3Url" v-bind:href="mod.Smapi3Url" v-bind:title="mod.Smapi3Tooltip">{{mod.Smapi3DisplayText}}</a>
-                        <span v-else v-bind:title="mod.Smapi3Tooltip">{{mod.Smapi3DisplayText}}</span>
-                    </small>
                 </td>
                 <td>
                     <small><a v-bind:href="'#' + mod.Slug">#</a></small>
