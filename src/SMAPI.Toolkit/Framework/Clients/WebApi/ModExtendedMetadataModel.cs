@@ -51,6 +51,9 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.WebApi
         /// <summary>The human-readable summary of the compatibility status or workaround, without HTML formatitng.</summary>
         public string CompatibilitySummary { get; set; }
 
+        /// <summary>The game or SMAPI version which broke this mod, if applicable.</summary>
+        public string BrokeIn { get; set; }
+
 
         /****
         ** Beta compatibility
@@ -61,6 +64,9 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.WebApi
 
         /// <summary>The human-readable summary of the compatibility status or workaround for the Stardew Valley beta (if any), without HTML formatitng.</summary>
         public string BetaCompatibilitySummary { get; set; }
+
+        /// <summary>The beta game or SMAPI version which broke this mod, if applicable.</summary>
+        public string BetaBrokeIn { get; set; }
 
 
         /*********
@@ -88,9 +94,11 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.WebApi
 
                 this.CompatibilityStatus = wiki.Compatibility.Status;
                 this.CompatibilitySummary = wiki.Compatibility.Summary;
+                this.BrokeIn = wiki.Compatibility.BrokeIn;
 
                 this.BetaCompatibilityStatus = wiki.BetaCompatibility?.Status;
                 this.BetaCompatibilitySummary = wiki.BetaCompatibility?.Summary;
+                this.BetaBrokeIn = wiki.BetaCompatibility?.BrokeIn;
             }
 
             // internal DB data
