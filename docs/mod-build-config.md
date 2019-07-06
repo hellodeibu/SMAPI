@@ -14,6 +14,7 @@ for SMAPI mods and related tools. The package is fully compatible with Linux, Ma
 * [Special cases](#special-cases)
   * [Custom game path](#custom-game-path)
   * [Non-mod projects](#non-mod-projects)
+* [For SMAPI developers](#for-smapi-developers)
 * [Release notes](#release-notes)
 
 ## Use
@@ -264,6 +265,27 @@ If you need to copy the referenced DLLs into your build output, add this too:
 ```xml
 <CopyModReferencesToBuildOutput>true</CopyModReferencesToBuildOutput>
 ```
+
+## For SMAPI developers
+The mod build package consists of three projects:
+
+project                                           | purpose
+------------------------------------------------- | ----------------
+`StardewModdingAPI.ModBuildConfig`                | Configures the build (references, deploying the mod files, setting up debugging, etc).
+`StardewModdingAPI.ModBuildConfig.Analyzer`       | Adds C# analyzers which show code warnings in Visual Studio.
+`StardewModdingAPI.ModBuildConfig.Analyzer.Tests` | Unit tests for the C# analyzers.
+
+To prepare a build of the NuGet package:
+1. Install the [NuGet CLI](https://docs.microsoft.com/en-us/nuget/install-nuget-client-tools#nugetexe-cli).
+1. Change the version and release notes in `package.nuspec`.
+2. Rebuild the solution in _Release_ mode.
+3. Open a terminal in the `bin/Pathoschild.Stardew.ModBuildConfig` package and run this command:
+   ```bash
+   nuget.exe pack
+   ```
+
+That will create a `Pathoschild.Stardew.ModBuildConfig-<version>.nupkg` file in the same directory
+which can be uploaded to NuGet or referenced directly.
 
 ## Release notes
 ### Upcoming release
