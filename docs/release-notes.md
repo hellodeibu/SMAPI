@@ -1,3 +1,5 @@
+&larr; [README](README.md)
+
 # Release notes
 ## 3.0 (upcoming release)
 These changes have not been released yet.
@@ -664,7 +666,7 @@ Released 14 October 2017 for Stardew Valley 1.2.30–1.2.33.
 
 * **Command-line install**
   For power users and mod managers, the SMAPI installer can now be scripted using command-line arguments
-  (see [technical docs](technical-docs.md#command-line-arguments)).
+  (see [technical docs](technical/smapi.md#command-line-arguments)).
 
 ### Change log
 For players:

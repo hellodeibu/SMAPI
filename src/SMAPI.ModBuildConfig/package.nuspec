@@ -9,9 +9,9 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <license type="expression">MIT</license>
     <repository type="git" url="https://github.com/Pathoschild/SMAPI" />
-    <projectUrl>https://github.com/Pathoschild/SMAPI/blob/develop/docs/mod-build-config.md#readme</projectUrl>
+    <projectUrl>https://smapi.io/package/readme</projectUrl>
     <iconUrl>https://raw.githubusercontent.com/Pathoschild/SMAPI/develop/src/SMAPI.ModBuildConfig/assets/nuget-icon.png</iconUrl>
-    <description>Automates the build configuration for crossplatform Stardew Valley SMAPI mods. For SMAPI 2.11 or later.</description>
+    <description>Automates the build configuration for crossplatform Stardew Valley SMAPI mods. For SMAPI 3.0 or later.</description>
     <releaseNotes>
       3.0.0:
       - Updated for SMAPI 3.0 and Stardew Valley 1.4.

@@ -16,9 +16,7 @@
 
   <ItemGroup>
     <None Include="..\..\build\find-game-folder.targets" Link="build\find-game-folder.targets" />
-    <None Include="..\..\docs\mod-build-config.md">
-      <Link>mod-build-config.md</Link>
-    </None>
+    <None Include="..\..\docs\technical\mod-package.md" Link="mod-build-config.md" />
   </ItemGroup>
 
   <ItemGroup>

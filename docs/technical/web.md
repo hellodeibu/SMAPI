@@ -1,3 +1,5 @@
+&larr; [README](../README.md)
+
 **SMAPI.Web** contains the code for the `smapi.io` website, including the mod compatibility list
 and update check API.
 

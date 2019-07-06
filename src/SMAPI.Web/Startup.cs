@@ -162,7 +162,7 @@ namespace StardewModdingAPI.Web
 
             // shortcut redirects
             redirects.Add(new RedirectToUrlRule(@"^/3\.0\.?$", "https://stardewvalleywiki.com/Modding:Migrate_to_SMAPI_3.0"));
-            redirects.Add(new RedirectToUrlRule(@"^/buildmsg(?:/?(.*))$", "https://github.com/Pathoschild/SMAPI/blob/develop/docs/mod-build-config.md#$1"));
+            redirects.Add(new RedirectToUrlRule(@"^/(?:buildmsg|package)(?:/?(.*))$", "https://github.com/Pathoschild/SMAPI/blob/develop/docs/technical/mod-package.md#$1")); // buildmsg deprecated, remove when SDV 1.4 is released
             redirects.Add(new RedirectToUrlRule(@"^/compat\.?$", "https://mods.smapi.io"));
             redirects.Add(new RedirectToUrlRule(@"^/docs\.?$", "https://stardewvalleywiki.com/Modding:Index"));
             redirects.Add(new RedirectToUrlRule(@"^/install\.?$", "https://stardewvalleywiki.com/Modding:Player_Guide/Getting_Started#Install_SMAPI"));

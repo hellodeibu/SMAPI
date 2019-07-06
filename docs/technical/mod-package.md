@@ -1,3 +1,5 @@
+&larr; [SMAPI](../README.md)
+
 The **mod build package** is an open-source NuGet package which automates the MSBuild configuration
 for SMAPI mods and related tools. The package is fully compatible with Linux, Mac, and Windows.
 

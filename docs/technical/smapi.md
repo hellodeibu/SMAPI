@@ -1,10 +1,10 @@
-&larr; [README](README.md)
+&larr; [README](../README.md)
 
 This file provides more technical documentation about SMAPI. If you only want to use or create
 mods, this section isn't relevant to you; see the main README to use or create mods.
 
-This document is about SMAPI itself; see also [mod build package](mod-build-config.md) and
-[web services](web-services.md).
+This document is about SMAPI itself; see also [mod build package](mod-package.md) and
+[web services](web.md).
 
 # Contents
 * [Customisation](#customisation)
@@ -102,4 +102,4 @@ on the wiki for the first-time setup.
    4. Zip the two folders.
 
 ## Release notes
-See [release notes](release-notes.md).
+See [release notes](../release-notes.md).

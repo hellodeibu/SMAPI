@@ -28,11 +28,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Internal", "Internal", "{82
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{EB35A917-67B9-4EFA-8DFC-4FB49B3949BB}"
 	ProjectSection(SolutionItems) = preProject
-		..\docs\mod-build-config.md = ..\docs\mod-build-config.md
 		..\docs\README.md = ..\docs\README.md
 		..\docs\release-notes.md = ..\docs\release-notes.md
-		..\docs\technical-docs.md = ..\docs\technical-docs.md
-		..\docs\web-services.md = ..\docs\web-services.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "technical", "technical", "{66280E54-9913-4EF3-9102-D391A1A690EB}"
+	ProjectSection(SolutionItems) = preProject
+		..\docs\technical\mod-package.md = ..\docs\technical\mod-package.md
+		..\docs\technical\smapi.md = ..\docs\technical\smapi.md
+		..\docs\technical\web.md = ..\docs\technical\web.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{09CF91E5-5BAB-4650-A200-E5EA9A633046}"
@@ -137,6 +141,7 @@ Global
 		{0CF97929-B0D0-4D73-B7BF-4FF7191035F9} = {82D22ED7-A0A7-4D64-8E92-4B6A5E74ED11}
 		{4B1CEB70-F756-4A57-AAE8-8CD78C475F25} = {86C452BE-D2D8-45B4-B63F-E329EB06CEDA}
 		{F4453AB6-D7D6-447F-A973-956CC777968F} = {4B1CEB70-F756-4A57-AAE8-8CD78C475F25}
+		{66280E54-9913-4EF3-9102-D391A1A690EB} = {EB35A917-67B9-4EFA-8DFC-4FB49B3949BB}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {70143042-A862-47A8-A677-7C819DDC90DC}
