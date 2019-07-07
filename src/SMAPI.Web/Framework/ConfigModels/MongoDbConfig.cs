@@ -17,20 +17,22 @@ namespace StardewModdingAPI.Web.Framework.ConfigModels
         /// <summary>The MongoDB password (if any).</summary>
         public string Password { get; set; }
 
+        /// <summary>The database name.</summary>
+        public string Database { get; set; }
+
 
         /*********
         ** Public method
         *********/
         /// <summary>Get the MongoDB connection string.</summary>
-        /// <param name="authDatabase">The initial database for which to authenticate.</param>
-        public string GetConnectionString(string authDatabase)
+        public string GetConnectionString()
         {
             bool isLocal = this.Host == "localhost";
             bool hasLogin = !string.IsNullOrWhiteSpace(this.Username) && !string.IsNullOrWhiteSpace(this.Password);
 
             return $"mongodb{(isLocal ? "" : "+srv")}://"
                 + (hasLogin ? $"{Uri.EscapeDataString(this.Username)}:{Uri.EscapeDataString(this.Password)}@" : "")
-                + $"{this.Host}/{authDatabase}retryWrites=true&w=majority";
+                + $"{this.Host}/{this.Database}?retryWrites=true&w=majority";
         }
     }
 }

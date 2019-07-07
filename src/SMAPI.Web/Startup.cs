@@ -115,9 +115,9 @@ namespace StardewModdingAPI.Web
             // init MongoDB
             {
                 MongoDbConfig mongoConfig = this.Configuration.GetSection("MongoDB").Get<MongoDbConfig>();
-                string connectionString = mongoConfig.GetConnectionString("smapi");
+                string connectionString = mongoConfig.GetConnectionString();
 
-                services.AddSingleton<IMongoDatabase>(serv => new MongoClient(connectionString).GetDatabase("smapi"));
+                services.AddSingleton<IMongoDatabase>(serv => new MongoClient(connectionString).GetDatabase(mongoConfig.Database));
                 services.AddSingleton<IWikiCacheRepository>(serv => new WikiCacheRepository(serv.GetService<IMongoDatabase>()));
             }
         }

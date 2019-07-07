@@ -123,6 +123,7 @@ Initial setup:
    `MongoDB:Host`                  | The hostname for the MongoDB instance.
    `MongoDB:Username`              | The login username for the MongoDB instance.
    `MongoDB:Password`              | The login password for the MongoDB instance.
+   `MongoDB:Database`              | The database name (e.g. `smapi` in production or `smapi-edge` in testing environments).
 
 To deploy updates:
 1. Deploy the web project using [AWS Toolkit for Visual Studio](https://aws.amazon.com/visualstudio/).
