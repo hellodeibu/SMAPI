@@ -127,5 +127,4 @@ Initial setup:
 
 To deploy updates:
 1. Deploy the web project using [AWS Toolkit for Visual Studio](https://aws.amazon.com/visualstudio/).
-2. If the MongoDB schema changed, delete the collections in the MongoDB database. (They'll be
-   recreated automatically.)
+2. If the MongoDB schema changed, delete the MongoDB database. (It'll be recreated automatically.)

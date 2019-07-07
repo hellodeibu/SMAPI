@@ -32,7 +32,7 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
             this.WikiMods = database.GetCollection<CachedWikiMod>("wiki-mods");
 
             // add indexes if needed
-            this.WikiMods.Indexes.CreateOne(new CreateIndexModel<CachedWikiMod>(Builders<CachedWikiMod>.IndexKeys.Text(p => p.ID)));
+            this.WikiMods.Indexes.CreateOne(new CreateIndexModel<CachedWikiMod>(Builders<CachedWikiMod>.IndexKeys.Ascending(p => p.ID)));
         }
 
         /// <summary>Get the cached wiki metadata.</summary>
