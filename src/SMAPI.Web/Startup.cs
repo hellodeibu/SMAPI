@@ -6,9 +6,11 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
 using Newtonsoft.Json;
 using StardewModdingAPI.Toolkit.Serialisation;
 using StardewModdingAPI.Web.Framework;
+using StardewModdingAPI.Web.Framework.Caching.Wiki;
 using StardewModdingAPI.Web.Framework.Clients.Chucklefish;
 using StardewModdingAPI.Web.Framework.Clients.GitHub;
 using StardewModdingAPI.Web.Framework.Clients.ModDrop;
@@ -53,6 +55,7 @@ namespace StardewModdingAPI.Web
                 .Configure<ModCompatibilityListConfig>(this.Configuration.GetSection("ModCompatibilityList"))
                 .Configure<ModUpdateCheckConfig>(this.Configuration.GetSection("ModUpdateCheck"))
                 .Configure<SiteConfig>(this.Configuration.GetSection("Site"))
+                .Configure<MongoDbConfig>(this.Configuration.GetSection("MongoDB"))
                 .Configure<RouteOptions>(options => options.ConstraintMap.Add("semanticVersion", typeof(VersionConstraint)))
                 .AddMemoryCache()
                 .AddMvc()
@@ -107,6 +110,15 @@ namespace StardewModdingAPI.Web
                     userKey: api.PastebinUserKey,
                     devKey: api.PastebinDevKey
                 ));
+            }
+
+            // init MongoDB
+            {
+                MongoDbConfig mongoConfig = this.Configuration.GetSection("MongoDB").Get<MongoDbConfig>();
+                string connectionString = mongoConfig.GetConnectionString("smapi");
+
+                services.AddSingleton<IMongoDatabase>(serv => new MongoClient(connectionString).GetDatabase("smapi"));
+                services.AddSingleton<IWikiCacheRepository>(serv => new WikiCacheRepository(serv.GetService<IMongoDatabase>()));
             }
         }
 

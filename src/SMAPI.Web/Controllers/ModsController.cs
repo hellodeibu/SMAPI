@@ -1,12 +1,10 @@
-using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using StardewModdingAPI.Toolkit;
-using StardewModdingAPI.Toolkit.Framework.Clients.Wiki;
+using StardewModdingAPI.Web.Framework.Caching.Wiki;
 using StardewModdingAPI.Web.Framework.ConfigModels;
 using StardewModdingAPI.Web.ViewModels;
 
@@ -19,7 +17,7 @@ namespace StardewModdingAPI.Web.Controllers
         ** Fields
         *********/
         /// <summary>The cache in which to store mod metadata.</summary>
-        private readonly IMemoryCache Cache;
+        private readonly IWikiCacheRepository Cache;
 
         /// <summary>The number of minutes successful update checks should be cached before refetching them.</summary>
         private readonly int CacheMinutes;
@@ -31,7 +29,7 @@ namespace StardewModdingAPI.Web.Controllers
         /// <summary>Construct an instance.</summary>
         /// <param name="cache">The cache in which to store mod metadata.</param>
         /// <param name="configProvider">The config settings for mod update checks.</param>
-        public ModsController(IMemoryCache cache, IOptions<ModCompatibilityListConfig> configProvider)
+        public ModsController(IWikiCacheRepository cache, IOptions<ModCompatibilityListConfig> configProvider)
         {
             ModCompatibilityListConfig config = configProvider.Value;
 
@@ -54,21 +52,24 @@ namespace StardewModdingAPI.Web.Controllers
         /// <summary>Asynchronously fetch mod metadata from the wiki.</summary>
         public async Task<ModListModel> FetchDataAsync()
         {
-            return await this.Cache.GetOrCreateAsync($"{nameof(ModsController)}_mod_list", async entry =>
+            // refresh cache
+            CachedWikiMod[] mods;
+            if (!this.Cache.TryGetWikiMetadata(out CachedWikiMetadata metadata) || this.Cache.IsStale(metadata.LastUpdated, this.CacheMinutes))
             {
-                WikiModList data = await new ModToolkit().GetWikiCompatibilityListAsync();
-                ModListModel model = new ModListModel(
-                    stableVersion: data.StableVersion,
-                    betaVersion: data.BetaVersion,
-                    mods: data
-                        .Mods
-                        .Select(mod => new ModModel(mod))
-                        .OrderBy(p => Regex.Replace(p.Name.ToLower(), "[^a-z0-9]", "")) // ignore case, spaces, and special characters when sorting
-                );
+                var wikiCompatList = await new ModToolkit().GetWikiCompatibilityListAsync();
+                this.Cache.SaveWikiData(wikiCompatList.StableVersion, wikiCompatList.BetaVersion, wikiCompatList.Mods, out metadata, out mods);
+            }
+            else
+                mods = this.Cache.GetWikiMods().ToArray();
 
-                entry.AbsoluteExpiration = DateTimeOffset.UtcNow.AddMinutes(this.CacheMinutes);
-                return model;
-            });
+            // build model
+            return new ModListModel(
+                stableVersion: metadata.StableVersion,
+                betaVersion: metadata.BetaVersion,
+                mods: mods
+                    .Select(mod => new ModModel(mod.GetModel()))
+                    .OrderBy(p => Regex.Replace(p.Name.ToLower(), "[^a-z0-9]", "")) // ignore case, spaces, and special characters when sorting
+            );
         }
     }
 }

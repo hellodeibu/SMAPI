@@ -19,12 +19,16 @@
     <PackageReference Include="Microsoft.AspNetCore.Rewrite" Version="2.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.1.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="2.1.1" />
+    <PackageReference Include="MongoDB.Driver" Version="2.8.1" />
     <PackageReference Include="Pathoschild.Http.FluentClient" Version="3.2.0" />
   </ItemGroup>
   <ItemGroup>
     <DotNetCliToolReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Tools" Version="1.0.1" />
   </ItemGroup>
   <Import Project="..\SMAPI.Internal\SMAPI.Internal.projitems" Label="Shared" />
+  <ItemGroup>
+    <None Include="..\..\docs\technical\web.md" Link="web.md" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SMAPI.Toolkit\SMAPI.Toolkit.csproj" />
   </ItemGroup>

@@ -82,25 +82,49 @@ For example:
 ```
 
 ## For SMAPI developers
-### Local development
-`SMAPI.Web` is a regular ASP.NET MVC Core app, so you can just launch it from within
-Visual Studio to run a local version.
+### Local environment
+A local environment lets you run a complete copy of the web project (including cache database) on
+your machine, with no external dependencies aside from the actual mod sites.
 
-There are two differences when it's run locally: all endpoints use HTTP instead of HTTPS, and the
-subdomain portion becomes a route (e.g. `log.smapi.io` &rarr; `localhost:59482/log`).
+Initial setup:
 
-Before running it locally, you need to enter your credentials in the `appsettings.Development.json`
-file. See the next section for a description of each setting. This file is listed in `.gitignore`
-to prevent accidentally committing credentials.
+1. [Install MongoDB](https://docs.mongodb.com/manual/administration/install-community/) and add its
+   `bin` folder to the system PATH.
+2. Create a local folder for the MongoDB data (e.g. `C:\dev\smapi-cache`).
+3. Enter your credentials in the `appsettings.Development.json` file. You can leave the MongoDB
+   credentials as-is to use the default local instance; see the next section for the other settings.
 
-### Deploying to Amazon Beanstalk
-The app can be deployed to a standard Amazon Beanstalk IIS environment. When creating the
-environment, make sure to specify the following environment properties:
+To launch the environment:
+1. Launch MongoDB from a terminal (change the data path if applicable):
+    ```sh
+    mongod --dbpath C:\dev\smapi-cache
+    ```
+2. Launch `SMAPI.Web` from Visual Studio to run a local version of the site.  
+    <small>(Local URLs will use HTTP instead of HTTPS, and subdomains will become routes, like
+    `log.smapi.io` &rarr; `localhost:59482/log`.)</small>
 
-property name                   | description
-------------------------------- | -----------------
-`LogParser:PastebinDevKey`      | The [Pastebin developer key](https://pastebin.com/api#1) used to authenticate with the Pastebin API.
-`LogParser:PastebinUserKey`     | The [Pastebin user key](https://pastebin.com/api#8) used to authenticate with the Pastebin API. Can be left blank to post anonymously.
-`LogParser:SectionUrl`          | The root URL of the log page, like `https://log.smapi.io/`.
-`ModUpdateCheck:GitHubPassword` | The password with which to authenticate to GitHub when fetching release info.
-`ModUpdateCheck:GitHubUsername` | The username with which to authenticate to GitHub when fetching release info.
+### Production environment
+A production environment includes the web servers and cache database hosted online for public
+access. This section assumes you're creating a new production environment from scratch (not using
+the official live environment).
+
+Initial setup:
+
+1. Launch an empty MongoDB server (e.g. using [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)).
+2. Create an AWS Beanstalk .NET environment with these environment properties:
+
+   property name                   | description
+   ------------------------------- | -----------------
+   `LogParser:PastebinDevKey`      | The [Pastebin developer key](https://pastebin.com/api#1) used to authenticate with the Pastebin API.
+   `LogParser:PastebinUserKey`     | The [Pastebin user key](https://pastebin.com/api#8) used to authenticate with the Pastebin API. Can be left blank to post anonymously.
+   `LogParser:SectionUrl`          | The root URL of the log page, like `https://log.smapi.io/`.
+   `ModUpdateCheck:GitHubPassword` | The password with which to authenticate to GitHub when fetching release info.
+   `ModUpdateCheck:GitHubUsername` | The username with which to authenticate to GitHub when fetching release info.
+   `MongoDB:Host`                  | The hostname for the MongoDB instance.
+   `MongoDB:Username`              | The login username for the MongoDB instance.
+   `MongoDB:Password`              | The login password for the MongoDB instance.
+
+To deploy updates:
+1. Deploy the web project using [AWS Toolkit for Visual Studio](https://aws.amazon.com/visualstudio/).
+2. If the MongoDB schema changed, delete the collections in the MongoDB database. (They'll be
+   recreated automatically.)
