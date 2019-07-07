@@ -12,7 +12,7 @@ and update check API.
   * [Deploying to Amazon Beanstalk](#deploying-to-amazon-beanstalk)
 
 ## Overview
-The `StardewModdingAPI.Web` project provides an API and web UI hosted at `*.smapi.io`.
+The `SMAPI.Web` project provides an API and web UI hosted at `*.smapi.io`.
 
 ### Log parser
 The log parser provides a web UI for uploading, parsing, and sharing SMAPI logs. The logs are
@@ -83,7 +83,7 @@ For example:
 
 ## For SMAPI developers
 ### Local development
-`StardewModdingAPI.Web` is a regular ASP.NET MVC Core app, so you can just launch it from within
+`SMAPI.Web` is a regular ASP.NET MVC Core app, so you can just launch it from within
 Visual Studio to run a local version.
 
 There are two differences when it's run locally: all endpoints use HTTP instead of HTTPS, and the
