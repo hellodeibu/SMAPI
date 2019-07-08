@@ -249,7 +249,7 @@
 
         "Yet Another Harvest With Scythe Mod": {
             "ID": "bcmpinc.HarvestWithScythe",
-            "~1.0 | Status": "AssumeBroken" // runtime Harmony error
+            "~1.1 | Status": "AssumeBroken" // runtime Harmony error
         },
 
         /*********
@@ -295,6 +295,11 @@
             "ID": "Platonymous.CustomFarming",
             "Default | UpdateKey": "Nexus:991",
             "~2.10.10 | Status": "AssumeBroken" // possibly due to PyTK
+        },
+
+        "Decrafting Mod": {
+            "ID": "MSCFC.DecraftingMod",
+            "~1.0 | Status": "AssumeBroken" // NRE in ModEntry
         },
 
         "JoJaBan - Arcade Sokoban": {
