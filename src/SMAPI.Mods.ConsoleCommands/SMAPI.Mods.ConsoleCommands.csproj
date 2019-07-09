@@ -22,16 +22,16 @@
       <HintPath>$(GamePath)\$(GameExecutableName).exe</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="StardewValley.GameData">
+      <HintPath>$(GamePath)\StardewValley.GameData.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
 
   <Choose>
     <!-- Windows -->
     <When Condition="$(OS) == 'Windows_NT'">
       <ItemGroup>
-        <Reference Include="StardewValley.GameData">
-          <HintPath>$(GamePath)\StardewValley.GameData.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
         <Reference Include="Netcode">
           <HintPath>$(GamePath)\Netcode.dll</HintPath>
           <Private>False</Private>
@@ -54,10 +54,6 @@
     <!-- Linux/Mac -->
     <Otherwise>
       <ItemGroup>
-        <Reference Include="StardewValley.GameData.MonoGame">
-          <HintPath>$(GamePath)\StardewValley.GameData.MonoGame.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
         <Reference Include="MonoGame.Framework">
           <HintPath>$(GamePath)\MonoGame.Framework.dll</HintPath>
           <Private>False</Private>
