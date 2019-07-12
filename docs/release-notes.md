@@ -29,6 +29,7 @@ These changes have not been released yet.
 
 * For the web UI:
   * When filtering the mod list, clicking a mod link now automatically adds it to the visible mods.
+  * Added log parser instructions for Android.
   * Fixed log parser failing in some cases due to time format localisation.
 
 * For modders:
