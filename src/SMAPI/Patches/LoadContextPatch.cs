@@ -49,13 +49,13 @@ namespace StardewModdingAPI.Patches
             // detect CreatedBasicInfo
             harmony.Patch(
                 original: AccessTools.Method(typeof(TitleMenu), nameof(TitleMenu.createdNewCharacter)),
-                prefix: new HarmonyMethod(this.GetType(), nameof(LoadContextPatch.OnCreatingNewCharacter))
+                prefix: new HarmonyMethod(this.GetType(), nameof(LoadContextPatch.Before_TitleMenu_CreatedNewCharacter))
             );
 
             // detect CreatedLocations
             harmony.Patch(
                 original: AccessTools.Method(typeof(Game1), nameof(Game1.loadForNewGame)),
-                postfix: new HarmonyMethod(this.GetType(), nameof(LoadContextPatch.OnLoaded))
+                postfix: new HarmonyMethod(this.GetType(), nameof(LoadContextPatch.After_Game1_LoadForNewGame))
             );
         }
 
@@ -66,7 +66,7 @@ namespace StardewModdingAPI.Patches
         /// <summary>Called before <see cref="TitleMenu.createdNewCharacter"/>.</summary>
         /// <returns>Returns whether to execute the original method.</returns>
         /// <remarks>This method must be static for Harmony to work correctly. See the Harmony documentation before renaming arguments.</remarks>
-        private static bool OnCreatingNewCharacter()
+        private static bool Before_TitleMenu_CreatedNewCharacter()
         {
             LoadContextPatch.OnStageChanged(LoadStage.CreatedBasicInfo);
             return true;
@@ -74,7 +74,7 @@ namespace StardewModdingAPI.Patches
 
         /// <summary>Called after <see cref="Game1.loadForNewGame"/>.</summary>
         /// <remarks>This method must be static for Harmony to work correctly. See the Harmony documentation before renaming arguments.</remarks>
-        private static void OnLoaded()
+        private static void After_Game1_LoadForNewGame()
         {
             bool creating =
                 (Game1.currentMinigame is Intro) // creating save with intro

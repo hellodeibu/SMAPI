@@ -42,7 +42,7 @@ namespace StardewModdingAPI.Patches
         {
             harmony.Patch(
                 original: AccessTools.Method(typeof(GameLocation), "checkEventPrecondition"),
-                prefix: new HarmonyMethod(this.GetType(), nameof(EventErrorPatch.Prefix))
+                prefix: new HarmonyMethod(this.GetType(), nameof(EventErrorPatch.Before_GameLocation_CheckEventPrecondition))
             );
         }
 
@@ -58,7 +58,7 @@ namespace StardewModdingAPI.Patches
         /// <returns>Returns whether to execute the original method.</returns>
         /// <remarks>This method must be static for Harmony to work correctly. See the Harmony documentation before renaming arguments.</remarks>
         [SuppressMessage("ReSharper", "InconsistentNaming", Justification = "Argument names are defined by Harmony.")]
-        private static bool Prefix(GameLocation __instance, ref int __result, string precondition, MethodInfo __originalMethod)
+        private static bool Before_GameLocation_CheckEventPrecondition(GameLocation __instance, ref int __result, string precondition, MethodInfo __originalMethod)
         {
             if (EventErrorPatch.IsIntercepted)
                 return true;

@@ -9,6 +9,7 @@ These changes have not been released yet.
   * Improved performance.
   * SMAPI now prevents invalid items from breaking menus on hover.
   * SMAPI now prevents invalid event preconditions from crashing the game (thanks to berkayylmao!).
+  * SMAPI now prevents more invalid dialogues from crashing the game.
   * Rewrote launch script on Linux to improve compatibility (thanks to kurumushi and toastal!).
   * Improved mod scanning:
     * Now ignores metadata files/folders like `__MACOSX` and `__folder_managed_by_vortex`.
