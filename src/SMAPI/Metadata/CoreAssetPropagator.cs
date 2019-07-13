@@ -316,8 +316,12 @@ namespace StardewModdingAPI.Metadata
                     return true;
 
                 /****
-                ** Content\Critters
+                ** Content\TileSheets
                 ****/
+                case "tilesheets\\critters": // Critter constructor
+                    this.ReloadCritterTextures(content, key);
+                    return true;
+
                 case "tilesheets\\crops": // Game1.LoadContent
                     Game1.cropSpriteSheet = content.Load<Texture2D>(key);
                     return true;
@@ -560,6 +564,34 @@ namespace StardewModdingAPI.Metadata
                 return true;
             }
             return false;
+        }
+
+        /// <summary>Reload critter textures.</summary>
+        /// <param name="content">The content manager through which to reload the asset.</param>
+        /// <param name="key">The asset key to reload.</param>
+        /// <returns>Returns the number of reloaded assets.</returns>
+        private int ReloadCritterTextures(LocalizedContentManager content, string key)
+        {
+            // get critters
+            Critter[] critters =
+                (
+                    from location in this.GetLocations()
+                    let locCritters = this.Reflection.GetField<List<Critter>>(location, "critters").GetValue()
+                    where locCritters != null
+                    from Critter critter in locCritters
+                    where this.GetNormalisedPath(critter.sprite.textureName) == key
+                    select critter
+                )
+                .ToArray();
+            if (!critters.Any())
+                return 0;
+
+            // update sprites
+            Texture2D texture = content.Load<Texture2D>(key);
+            foreach (var entry in critters)
+                this.SetSpriteTexture(entry.sprite, texture);
+
+            return critters.Length;
         }
 
         /// <summary>Reload the sprites for a fence type.</summary>
