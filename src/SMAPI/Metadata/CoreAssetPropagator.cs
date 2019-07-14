@@ -293,6 +293,11 @@ namespace StardewModdingAPI.Metadata
 
                 case "loosesprites\\cursors": // Game1.LoadContent
                     Game1.mouseCursors = content.Load<Texture2D>(key);
+                    foreach (DayTimeMoneyBox menu in Game1.onScreenMenus.OfType<DayTimeMoneyBox>())
+                    {
+                        foreach (ClickableTextureComponent button in new[] { menu.questButton, menu.zoomInButton, menu.zoomOutButton })
+                            button.texture = Game1.mouseCursors;
+                    }
                     return true;
 
                 case "loosesprites\\daybg": // Game1.LoadContent
