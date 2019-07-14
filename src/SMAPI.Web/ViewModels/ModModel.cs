@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using StardewModdingAPI.Toolkit.Framework.Clients.Wiki;
@@ -37,6 +38,9 @@ namespace StardewModdingAPI.Web.ViewModels
         /// <summary>The human-readable warnings for players about this mod.</summary>
         public string[] Warnings { get; set; }
 
+        /// <summary>Extra metadata links (usually for open pull requests).</summary>
+        public Tuple<Uri, string>[] MetadataLinks { get; set; }
+
         /// <summary>A unique identifier for the mod that can be used in an anchor URL.</summary>
         public string Slug { get; set; }
 
@@ -61,6 +65,7 @@ namespace StardewModdingAPI.Web.ViewModels
             this.BetaCompatibility = entry.BetaCompatibility != null ? new ModCompatibilityModel(entry.BetaCompatibility) : null;
             this.ModPages = this.GetModPageUrls(entry).ToArray();
             this.Warnings = entry.Warnings;
+            this.MetadataLinks = entry.MetadataLinks;
             this.Slug = entry.Anchor;
         }
 

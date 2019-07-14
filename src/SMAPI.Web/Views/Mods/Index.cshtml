@@ -92,7 +92,14 @@
                     <span v-else class="mod-closed-source">no source</span>
                 </td>
                 <td>
-                    <small><a v-bind:href="'#' + mod.Slug">#</a></small>
+                    <small>
+                        <a v-bind:href="'#' + mod.Slug">#</a>
+                        <span v-show="showAdvanced">
+                            <template v-for="(link, i) in mod.MetadataLinks">
+                                <a v-bind:href="link.Item1">{{link.Item2}}</a>
+                            </template>
+                        </span>
+                    </small>
                 </td>
             </tr>
         </tbody>

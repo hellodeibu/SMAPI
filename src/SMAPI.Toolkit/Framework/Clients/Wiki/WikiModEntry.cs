@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
 {
     /// <summary>A mod entry in the wiki list.</summary>
@@ -47,6 +50,9 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
 
         /// <summary>The human-readable warnings for players about this mod.</summary>
         public string[] Warnings { get; set; }
+
+        /// <summary>Extra metadata links (usually for open pull requests).</summary>
+        public Tuple<Uri, string>[] MetadataLinks { get; set; }
 
         /// <summary>The link anchor for the mod entry in the wiki compatibility list.</summary>
         public string Anchor { get; set; }

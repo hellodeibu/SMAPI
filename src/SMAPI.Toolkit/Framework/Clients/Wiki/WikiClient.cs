@@ -127,6 +127,15 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
                     }
                 }
 
+                // parse links
+                List<Tuple<Uri, string>> metadataLinks = new List<Tuple<Uri, string>>();
+                foreach (HtmlNode linkElement in node.Descendants("td").Last().Descendants("a").Skip(1)) // skip anchor link
+                {
+                    string text = linkElement.InnerText.Trim();
+                    Uri url = new Uri(linkElement.GetAttributeValue("href", ""));
+                    metadataLinks.Add(Tuple.Create(url, text));
+                }
+
                 // yield model
                 yield return new WikiModEntry
                 {
@@ -143,6 +152,7 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
                     Compatibility = compatibility,
                     BetaCompatibility = betaCompatibility,
                     Warnings = warnings,
+                    MetadataLinks = metadataLinks.ToArray(),
                     Anchor = anchor
                 };
             }

@@ -58,6 +58,9 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
         /// <summary>The human-readable warnings for players about this mod.</summary>
         public string[] Warnings { get; set; }
 
+        /// <summary>Extra metadata links (usually for open pull requests).</summary>
+        public Tuple<Uri, string>[] MetadataLinks { get; set; }
+
         /// <summary>The link anchor for the mod entry in the wiki compatibility list.</summary>
         public string Anchor { get; set; }
 
@@ -122,6 +125,7 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
             this.CustomSourceUrl = mod.CustomSourceUrl;
             this.CustomUrl = mod.CustomUrl;
             this.ContentPackFor = mod.ContentPackFor;
+            this.MetadataLinks = mod.MetadataLinks;
             this.Warnings = mod.Warnings;
             this.Anchor = mod.Anchor;
 
@@ -156,6 +160,7 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
                 CustomUrl = this.CustomUrl,
                 ContentPackFor = this.ContentPackFor,
                 Warnings = this.Warnings,
+                MetadataLinks = this.MetadataLinks,
                 Anchor = this.Anchor,
 
                 // stable compatibility
