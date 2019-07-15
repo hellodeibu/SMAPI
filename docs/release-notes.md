@@ -30,7 +30,7 @@ These changes have not been released yet.
 
 * For the mod compatibility list:
   * Clicking a mod link now automatically adds it to the visible mods when the list is filtered.
-  * Added metadata links to advanced info, if any.
+  * Added metadata links and dev notes (if any) to advanced info.
 
 * For the log parser:
   * Added instructions for Android.

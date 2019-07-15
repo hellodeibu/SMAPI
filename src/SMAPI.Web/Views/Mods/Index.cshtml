@@ -98,6 +98,8 @@
                             <template v-for="(link, i) in mod.MetadataLinks">
                                 <a v-bind:href="link.Item1">{{link.Item2}}</a>
                             </template>
+
+                            <abbr v-bind:title="mod.DevNote" v-show="mod.DevNote">[dev note]</abbr>
                         </span>
                     </small>
                 </td>

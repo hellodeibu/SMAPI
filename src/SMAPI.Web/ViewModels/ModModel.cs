@@ -41,6 +41,9 @@ namespace StardewModdingAPI.Web.ViewModels
         /// <summary>Extra metadata links (usually for open pull requests).</summary>
         public Tuple<Uri, string>[] MetadataLinks { get; set; }
 
+        /// <summary>Special notes intended for developers who maintain unofficial updates or submit pull requests. </summary>
+        public string DevNote { get; set; }
+
         /// <summary>A unique identifier for the mod that can be used in an anchor URL.</summary>
         public string Slug { get; set; }
 
@@ -66,6 +69,7 @@ namespace StardewModdingAPI.Web.ViewModels
             this.ModPages = this.GetModPageUrls(entry).ToArray();
             this.Warnings = entry.Warnings;
             this.MetadataLinks = entry.MetadataLinks;
+            this.DevNote = entry.DevNote;
             this.Slug = entry.Anchor;
         }
 

@@ -61,6 +61,9 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
         /// <summary>Extra metadata links (usually for open pull requests).</summary>
         public Tuple<Uri, string>[] MetadataLinks { get; set; }
 
+        /// <summary>Special notes intended for developers who maintain unofficial updates or submit pull requests. </summary>
+        public string DevNote { get; set; }
+
         /// <summary>The link anchor for the mod entry in the wiki compatibility list.</summary>
         public string Anchor { get; set; }
 
@@ -127,6 +130,7 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
             this.ContentPackFor = mod.ContentPackFor;
             this.MetadataLinks = mod.MetadataLinks;
             this.Warnings = mod.Warnings;
+            this.DevNote = mod.DevNote;
             this.Anchor = mod.Anchor;
 
             // stable compatibility
@@ -161,6 +165,7 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
                 ContentPackFor = this.ContentPackFor,
                 Warnings = this.Warnings,
                 MetadataLinks = this.MetadataLinks,
+                DevNote = this.DevNote,
                 Anchor = this.Anchor,
 
                 // stable compatibility

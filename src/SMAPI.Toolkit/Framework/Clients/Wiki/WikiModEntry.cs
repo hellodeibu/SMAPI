@@ -54,6 +54,9 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
         /// <summary>Extra metadata links (usually for open pull requests).</summary>
         public Tuple<Uri, string>[] MetadataLinks { get; set; }
 
+        /// <summary>Special notes intended for developers who maintain unofficial updates or submit pull requests. </summary>
+        public string DevNote { get; set; }
+
         /// <summary>The link anchor for the mod entry in the wiki compatibility list.</summary>
         public string Anchor { get; set; }
     }

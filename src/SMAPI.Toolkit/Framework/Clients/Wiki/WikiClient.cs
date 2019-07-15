@@ -99,6 +99,7 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
                 string customUrl = this.GetAttribute(node, "data-url");
                 string anchor = this.GetAttribute(node, "id");
                 string contentPackFor = this.GetAttribute(node, "data-content-pack-for");
+                string devNote = this.GetAttribute(node, "data-dev-note");
 
                 // parse stable compatibility
                 WikiCompatibilityInfo compatibility = new WikiCompatibilityInfo
@@ -153,6 +154,7 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
                     BetaCompatibility = betaCompatibility,
                     Warnings = warnings,
                     MetadataLinks = metadataLinks.ToArray(),
+                    DevNote = devNote,
                     Anchor = anchor
                 };
             }
