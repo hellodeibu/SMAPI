@@ -47,7 +47,7 @@ These changes have not been released yet.
   * When a mod is incompatible, the trace logs now list all detected issues instead of the first one.
   * Removed all deprecated APIs.
   * Removed the `Monitor.ExitGameImmediately` method.
-  * Updated to Json.NET 12.0.1.
+  * Updated to Json.NET 12.0.2.
   * Fixed issue where mod changes weren't tracked correctly for raising events in some cases. Events now reflect a frozen snapshot of the game state, and any mod changes are reflected in the next event tick.
   * Fixed `LoadStageChanged` event not raising correct flags in some cases when creating a new save.
   * Fixed 'location list changed' verbose log not correctly listing changes.
