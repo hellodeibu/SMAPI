@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Rewrite;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Newtonsoft.Json;
 using StardewModdingAPI.Toolkit.Serialisation;
@@ -57,6 +56,7 @@ namespace StardewModdingAPI.Web
                 .Configure<SiteConfig>(this.Configuration.GetSection("Site"))
                 .Configure<MongoDbConfig>(this.Configuration.GetSection("MongoDB"))
                 .Configure<RouteOptions>(options => options.ConstraintMap.Add("semanticVersion", typeof(VersionConstraint)))
+                .AddLogging()
                 .AddMemoryCache()
                 .AddMvc()
                 .ConfigureApplicationPartManager(manager => manager.FeatureProviders.Add(new InternalControllerFeatureProvider()))
@@ -125,12 +125,8 @@ namespace StardewModdingAPI.Web
         /// <summary>The method called by the runtime to configure the HTTP request pipeline.</summary>
         /// <param name="app">The application builder.</param>
         /// <param name="env">The hosting environment.</param>
-        /// <param name="loggerFactory">The logger factory.</param>
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
-            loggerFactory.AddConsole(this.Configuration.GetSection("Logging"));
-            loggerFactory.AddDebug();
-
             if (env.IsDevelopment())
                 app.UseDeveloperExceptionPage();
 
