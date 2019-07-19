@@ -29,6 +29,8 @@ These changes have not been released yet.
   * Fixed outdoor tilesheets being seasonalised when added to an indoor location.
 
 * For the mod compatibility list:
+  * Now loads faster (since data is fetched in a background service).
+  * Now continues working with cached data when the wiki is offline.
   * Clicking a mod link now automatically adds it to the visible mods when the list is filtered.
   * Added metadata links and dev notes (if any) to advanced info.
 

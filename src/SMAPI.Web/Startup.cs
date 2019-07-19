@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Hangfire;
+using Hangfire.Mongo;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Rewrite;
@@ -49,12 +51,13 @@ namespace StardewModdingAPI.Web
         /// <param name="services">The service injection container.</param>
         public void ConfigureServices(IServiceCollection services)
         {
-            // init configuration
+            // init basic services
             services
+                .Configure<BackgroundServicesConfig>(this.Configuration.GetSection("BackgroundServices"))
                 .Configure<ModCompatibilityListConfig>(this.Configuration.GetSection("ModCompatibilityList"))
                 .Configure<ModUpdateCheckConfig>(this.Configuration.GetSection("ModUpdateCheck"))
-                .Configure<SiteConfig>(this.Configuration.GetSection("Site"))
                 .Configure<MongoDbConfig>(this.Configuration.GetSection("MongoDB"))
+                .Configure<SiteConfig>(this.Configuration.GetSection("Site"))
                 .Configure<RouteOptions>(options => options.ConstraintMap.Add("semanticVersion", typeof(VersionConstraint)))
                 .AddLogging()
                 .AddMemoryCache()
@@ -67,6 +70,33 @@ namespace StardewModdingAPI.Web
 
                     options.SerializerSettings.Formatting = Formatting.Indented;
                     options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
+                });
+
+            // init background service
+            {
+                BackgroundServicesConfig config = this.Configuration.GetSection("BackgroundServices").Get<BackgroundServicesConfig>();
+                if (config.Enabled)
+                    services.AddHostedService<BackgroundService>();
+            }
+
+            // init MongoDB
+            MongoDbConfig mongoConfig = this.Configuration.GetSection("MongoDB").Get<MongoDbConfig>();
+            string mongoConnectionStr = mongoConfig.GetConnectionString();
+            services.AddSingleton<IMongoDatabase>(serv => new MongoClient(mongoConnectionStr).GetDatabase(mongoConfig.Database));
+            services.AddSingleton<IWikiCacheRepository>(serv => new WikiCacheRepository(serv.GetService<IMongoDatabase>()));
+
+            // init Hangfire (needs MongoDB)
+            services
+                .AddHangfire(config =>
+                {
+                    config
+                        .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
+                        .UseSimpleAssemblyNameTypeSerializer()
+                        .UseRecommendedSerializerSettings()
+                        .UseMongoStorage(mongoConnectionStr, $"{mongoConfig.Database}-hangfire", new MongoStorageOptions
+                        {
+                            MigrationOptions = new MongoMigrationOptions(MongoMigrationStrategy.Drop)
+                        });
                 });
 
             // init API clients
@@ -111,15 +141,6 @@ namespace StardewModdingAPI.Web
                     devKey: api.PastebinDevKey
                 ));
             }
-
-            // init MongoDB
-            {
-                MongoDbConfig mongoConfig = this.Configuration.GetSection("MongoDB").Get<MongoDbConfig>();
-                string connectionString = mongoConfig.GetConnectionString();
-
-                services.AddSingleton<IMongoDatabase>(serv => new MongoClient(connectionString).GetDatabase(mongoConfig.Database));
-                services.AddSingleton<IWikiCacheRepository>(serv => new WikiCacheRepository(serv.GetService<IMongoDatabase>()));
-            }
         }
 
         /// <summary>The method called by the runtime to configure the HTTP request pipeline.</summary>
@@ -127,9 +148,9 @@ namespace StardewModdingAPI.Web
         /// <param name="env">The hosting environment.</param>
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
+            // basic config
             if (env.IsDevelopment())
                 app.UseDeveloperExceptionPage();
-
             app
                 .UseCors(policy => policy
                     .AllowAnyHeader()
@@ -140,6 +161,9 @@ namespace StardewModdingAPI.Web
                 .UseRewriter(this.GetRedirectRules())
                 .UseStaticFiles() // wwwroot folder
                 .UseMvc();
+
+            // config Hangfire
+            app.UseHangfireDashboard("/tasks");
         }
 
 

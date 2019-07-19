@@ -17,8 +17,8 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
 
         /// <summary>Whether cached data is stale.</summary>
         /// <param name="lastUpdated">The date when the data was updated.</param>
-        /// <param name="cacheMinutes">The age in minutes before data is considered stale.</param>
-        bool IsStale(DateTimeOffset lastUpdated, int cacheMinutes);
+        /// <param name="staleMinutes">The age in minutes before data is considered stale.</param>
+        bool IsStale(DateTimeOffset lastUpdated, int staleMinutes);
 
         /// <summary>Get the cached wiki mods.</summary>
         /// <param name="filter">A filter to apply, if any.</param>

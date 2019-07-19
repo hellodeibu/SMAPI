@@ -37,7 +37,7 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
         {
             this.StableVersion = stableVersion;
             this.BetaVersion = betaVersion;
-            this.LastUpdated = DateTimeOffset.UtcNow;;
+            this.LastUpdated = DateTimeOffset.UtcNow;
         }
     }
 }
