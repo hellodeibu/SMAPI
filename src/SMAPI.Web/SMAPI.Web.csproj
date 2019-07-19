@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Remove="aws-beanstalk-tools-defaults.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="..\..\build\GlobalAssemblyInfo.cs" Link="Properties\GlobalAssemblyInfo.cs" />
   </ItemGroup>
 
