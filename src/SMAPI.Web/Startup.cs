@@ -71,6 +71,7 @@ namespace StardewModdingAPI.Web
                     options.SerializerSettings.Formatting = Formatting.Indented;
                     options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
                 });
+            MongoDbConfig mongoConfig = this.Configuration.GetSection("MongoDB").Get<MongoDbConfig>();
 
             // init background service
             {
@@ -80,12 +81,10 @@ namespace StardewModdingAPI.Web
             }
 
             // init MongoDB
-            MongoDbConfig mongoConfig = this.Configuration.GetSection("MongoDB").Get<MongoDbConfig>();
-            string mongoConnectionStr = mongoConfig.GetConnectionString();
-            services.AddSingleton<IMongoDatabase>(serv => new MongoClient(mongoConnectionStr).GetDatabase(mongoConfig.Database));
-            services.AddSingleton<IWikiCacheRepository>(serv => new WikiCacheRepository(serv.GetService<IMongoDatabase>()));
+            services.AddSingleton<IMongoDatabase>(serv => new MongoClient(mongoConfig.GetConnectionString()).GetDatabase(mongoConfig.Database));
+            services.AddSingleton<IWikiCacheRepository>(serv => new WikiCacheRepository(serv.GetRequiredService<IMongoDatabase>()));
 
-            // init Hangfire (needs MongoDB)
+            // init Hangfire
             services
                 .AddHangfire(config =>
                 {
@@ -93,7 +92,7 @@ namespace StardewModdingAPI.Web
                         .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
                         .UseSimpleAssemblyNameTypeSerializer()
                         .UseRecommendedSerializerSettings()
-                        .UseMongoStorage(mongoConnectionStr, $"{mongoConfig.Database}-hangfire", new MongoStorageOptions
+                        .UseMongoStorage(mongoConfig.GetConnectionString(), $"{mongoConfig.Database}-hangfire", new MongoStorageOptions
                         {
                             MigrationOptions = new MongoMigrationOptions(MongoMigrationStrategy.Drop)
                         });
