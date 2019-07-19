@@ -94,7 +94,8 @@ namespace StardewModdingAPI.Web
                         .UseRecommendedSerializerSettings()
                         .UseMongoStorage(mongoConfig.GetConnectionString(), $"{mongoConfig.Database}-hangfire", new MongoStorageOptions
                         {
-                            MigrationOptions = new MongoMigrationOptions(MongoMigrationStrategy.Drop)
+                            MigrationOptions = new MongoMigrationOptions(MongoMigrationStrategy.Drop),
+                            CheckConnection = false // error on startup takes down entire process
                         });
                 });
 
