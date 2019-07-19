@@ -162,8 +162,12 @@ namespace StardewModdingAPI.Web
                 .UseStaticFiles() // wwwroot folder
                 .UseMvc();
 
-            // config Hangfire
-            app.UseHangfireDashboard("/tasks");
+            // enable Hangfire dashboard
+            app.UseHangfireDashboard("/tasks", new DashboardOptions
+            {
+                IsReadOnlyFunc = context => !JobDashboardAuthorizationFilter.IsLocalRequest(context),
+                Authorization = new[] { new JobDashboardAuthorizationFilter() }
+            });
         }
 
 
