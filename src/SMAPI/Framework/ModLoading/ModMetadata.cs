@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using StardewModdingAPI.Framework.ModHelpers;
 using StardewModdingAPI.Toolkit.Framework.Clients.WebApi;
 using StardewModdingAPI.Toolkit.Framework.ModData;
 using StardewModdingAPI.Toolkit.Framework.UpdateData;
+using StardewModdingAPI.Toolkit.Utilities;
 
 namespace StardewModdingAPI.Framework.ModLoading
 {
@@ -17,10 +19,13 @@ namespace StardewModdingAPI.Framework.ModLoading
         /// <summary>The mod's display name.</summary>
         public string DisplayName { get; }
 
-        /// <summary>The mod's full directory path.</summary>
+        /// <summary>The root path containing mods.</summary>
+        public string RootPath { get; }
+
+        /// <summary>The mod's full directory path within the <see cref="RootPath"/>.</summary>
         public string DirectoryPath { get; }
 
-        /// <summary>The <see cref="IModMetadata.DirectoryPath"/> relative to the game's Mods folder.</summary>
+        /// <summary>The <see cref="DirectoryPath"/> relative to the <see cref="RootPath"/>.</summary>
         public string RelativeDirectoryPath { get; }
 
         /// <summary>The mod manifest.</summary>
@@ -68,16 +73,17 @@ namespace StardewModdingAPI.Framework.ModLoading
         *********/
         /// <summary>Construct an instance.</summary>
         /// <param name="displayName">The mod's display name.</param>
-        /// <param name="directoryPath">The mod's full directory path.</param>
-        /// <param name="relativeDirectoryPath">The <paramref name="directoryPath"/> relative to the game's Mods folder.</param>
+        /// <param name="directoryPath">The mod's full directory path within the <paramref name="rootPath"/>.</param>
+        /// <param name="rootPath">The root path containing mods.</param>
         /// <param name="manifest">The mod manifest.</param>
         /// <param name="dataRecord">Metadata about the mod from SMAPI's internal data (if any).</param>
         /// <param name="isIgnored">Whether the mod folder should be ignored. This should be <c>true</c> if it was found within a folder whose name starts with a dot.</param>
-        public ModMetadata(string displayName, string directoryPath, string relativeDirectoryPath, IManifest manifest, ModDataRecordVersionedFields dataRecord, bool isIgnored)
+        public ModMetadata(string displayName, string directoryPath, string rootPath, IManifest manifest, ModDataRecordVersionedFields dataRecord, bool isIgnored)
         {
             this.DisplayName = displayName;
             this.DirectoryPath = directoryPath;
-            this.RelativeDirectoryPath = relativeDirectoryPath;
+            this.RootPath = rootPath;
+            this.RelativeDirectoryPath = PathUtilities.GetRelativePath(this.RootPath, this.DirectoryPath);
             this.Manifest = manifest;
             this.DataRecord = dataRecord;
             this.IsIgnored = isIgnored;
@@ -195,6 +201,13 @@ namespace StardewModdingAPI.Framework.ModLoading
             return
                 this.Warnings.HasFlag(warning)
                 && (this.DataRecord?.DataRecord == null || !this.DataRecord.DataRecord.SuppressWarnings.HasFlag(warning));
+        }
+
+        /// <summary>Get a relative path which includes the root folder name.</summary>
+        public string GetRelativePathWithRoot()
+        {
+            string rootFolderName = Path.GetFileName(this.RootPath) ?? "";
+            return Path.Combine(rootFolderName, this.RelativeDirectoryPath);
         }
     }
 }

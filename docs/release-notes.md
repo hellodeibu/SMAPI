@@ -15,6 +15,7 @@ These changes have not been released yet.
     * Now ignores metadata files/folders like `__MACOSX` and `__folder_managed_by_vortex`.
     * Now ignores content files like `.txt` or `.png`, which avoids missing-manifest errors in some common cases.
     * Now detects XNB mods more accurately, and consolidates multi-folder XNB mods.
+  * Duplicate-mod errors now show the mod version in each folder.
   * Updated mod compatibility list.
   * Fixed mods needing to load custom `Map` assets before the game accesses them (SMAPI will now do so automatically).
   * Fixed Save Backup not pruning old backups if they're uncompressed.
@@ -46,7 +47,8 @@ These changes have not been released yet.
   * Added asset propagation for critter textures and `DayTimeMoneyBox` buttons.
   * `this.Monitor.Log` now defaults to the `Trace` log level instead of `Debug`.
   * The installer now recognises custom game paths stored in `stardewvalley.targets`, if any.
-  * When a mod is incompatible, the trace logs now list all detected issues instead of the first one.
+  * Trace logs for a broken mod now list all detected issues (instead of the first one).
+  * Trace logs when loading mods are now more clear.
   * Removed all deprecated APIs.
   * Removed the `Monitor.ExitGameImmediately` method.
   * Updated dependencies (including Json.NET 11.0.2 → 12.0.2, Mono.Cecil 0.10.1 → 0.10.4).

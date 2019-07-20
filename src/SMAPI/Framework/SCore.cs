@@ -400,7 +400,7 @@ namespace StardewModdingAPI.Framework
 
                 // filter out ignored mods
                 foreach (IModMetadata mod in mods.Where(p => p.IsIgnored))
-                    this.Monitor.Log($"  Skipped {mod.RelativeDirectoryPath} (folder name starts with a dot).", LogLevel.Trace);
+                    this.Monitor.Log($"  Skipped {mod.GetRelativePathWithRoot()} (folder name starts with a dot).", LogLevel.Trace);
                 mods = mods.Where(p => !p.IsIgnored).ToArray();
 
                 // load mods
@@ -902,13 +902,13 @@ namespace StardewModdingAPI.Framework
 
             // log entry
             {
-                string relativePath = PathUtilities.GetRelativePath(this.ModsPath, mod.DirectoryPath);
+                string relativePath = mod.GetRelativePathWithRoot();
                 if (mod.IsContentPack)
-                    this.Monitor.Log($"   {mod.DisplayName} ({relativePath}) [content pack]...", LogLevel.Trace);
+                    this.Monitor.Log($"   {mod.DisplayName} (from {relativePath}) [content pack]...", LogLevel.Trace);
                 else if (mod.Manifest?.EntryDll != null)
-                    this.Monitor.Log($"   {mod.DisplayName} ({relativePath}{Path.DirectorySeparatorChar}{mod.Manifest.EntryDll})...", LogLevel.Trace); // don't use Path.Combine here, since EntryDLL might not be valid
+                    this.Monitor.Log($"   {mod.DisplayName} (from {relativePath}{Path.DirectorySeparatorChar}{mod.Manifest.EntryDll})...", LogLevel.Trace); // don't use Path.Combine here, since EntryDLL might not be valid
                 else
-                    this.Monitor.Log($"   {mod.DisplayName} ({relativePath})...", LogLevel.Trace);
+                    this.Monitor.Log($"   {mod.DisplayName} (from {relativePath})...", LogLevel.Trace);
             }
 
             // add warning for missing update key
