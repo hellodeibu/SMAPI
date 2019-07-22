@@ -118,7 +118,13 @@ namespace StardewModdingAPI.Framework.ContentManagers
                     // XNB file
                     case ".xnb":
                         {
-                            return this.RawLoad<T>(assetName, useCache: false);
+                            T data = this.RawLoad<T>(assetName, useCache: false);
+                            if (data is Map map)
+                            {
+                                this.FixCustomTilesheetPaths(map, relativeMapPath: assetName);
+                                this.NormaliseTilesheetPaths(map);
+                            }
+                            return data;
                         }
 
                     // unpacked data
