@@ -121,8 +121,8 @@ namespace StardewModdingAPI.Framework.ContentManagers
                             T data = this.RawLoad<T>(assetName, useCache: false);
                             if (data is Map map)
                             {
-                                this.FixCustomTilesheetPaths(map, relativeMapPath: assetName);
                                 this.NormaliseTilesheetPaths(map);
+                                this.FixCustomTilesheetPaths(map, relativeMapPath: assetName);
                             }
                             return data;
                         }
@@ -161,8 +161,8 @@ namespace StardewModdingAPI.Framework.ContentManagers
                             // fetch & cache
                             FormatManager formatManager = FormatManager.Instance;
                             Map map = formatManager.LoadMap(file.FullName);
-                            this.FixCustomTilesheetPaths(map, relativeMapPath: assetName);
                             this.NormaliseTilesheetPaths(map);
+                            this.FixCustomTilesheetPaths(map, relativeMapPath: assetName);
                             return (T)(object)map;
                         }
 
