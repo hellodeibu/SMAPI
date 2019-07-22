@@ -117,7 +117,9 @@ namespace StardewModdingAPI.Framework.ContentManagers
                 {
                     // XNB file
                     case ".xnb":
-                        return this.RawLoad<T>(assetName, useCache: false);
+                        {
+                            return this.RawLoad<T>(assetName, useCache: false);
+                        }
 
                     // unpacked data
                     case ".json":
@@ -129,29 +131,34 @@ namespace StardewModdingAPI.Framework.ContentManagers
 
                     // unpacked image
                     case ".png":
-                        // validate
-                        if (typeof(T) != typeof(Texture2D))
-                            throw GetContentError($"can't read file with extension '{file.Extension}' as type '{typeof(T)}'; must be type '{typeof(Texture2D)}'.");
-
-                        // fetch & cache
-                        using (FileStream stream = File.OpenRead(file.FullName))
                         {
-                            Texture2D texture = Texture2D.FromStream(Game1.graphics.GraphicsDevice, stream);
-                            texture = this.PremultiplyTransparency(texture);
-                            return (T)(object)texture;
+                            // validate
+                            if (typeof(T) != typeof(Texture2D))
+                                throw GetContentError($"can't read file with extension '{file.Extension}' as type '{typeof(T)}'; must be type '{typeof(Texture2D)}'.");
+
+                            // fetch & cache
+                            using (FileStream stream = File.OpenRead(file.FullName))
+                            {
+                                Texture2D texture = Texture2D.FromStream(Game1.graphics.GraphicsDevice, stream);
+                                texture = this.PremultiplyTransparency(texture);
+                                return (T)(object)texture;
+                            }
                         }
 
                     // unpacked map
                     case ".tbin":
-                        // validate
-                        if (typeof(T) != typeof(Map))
-                            throw GetContentError($"can't read file with extension '{file.Extension}' as type '{typeof(T)}'; must be type '{typeof(Map)}'.");
+                        {
+                            // validate
+                            if (typeof(T) != typeof(Map))
+                                throw GetContentError($"can't read file with extension '{file.Extension}' as type '{typeof(T)}'; must be type '{typeof(Map)}'.");
 
-                        // fetch & cache
-                        FormatManager formatManager = FormatManager.Instance;
-                        Map map = formatManager.LoadMap(file.FullName);
-                        this.FixCustomTilesheetPaths(map, relativeMapPath: assetName);
-                        return (T)(object)map;
+                            // fetch & cache
+                            FormatManager formatManager = FormatManager.Instance;
+                            Map map = formatManager.LoadMap(file.FullName);
+                            this.FixCustomTilesheetPaths(map, relativeMapPath: assetName);
+                            this.NormaliseTilesheetPaths(map);
+                            return (T)(object)map;
+                        }
 
                     default:
                         throw GetContentError($"unknown file extension '{file.Extension}'; must be one of '.png', '.tbin', or '.xnb'.");
@@ -230,6 +237,14 @@ namespace StardewModdingAPI.Framework.ContentManagers
                 data[i] = Color.FromNonPremultiplied(data[i].ToVector4());
             texture.SetData(data);
             return texture;
+        }
+
+        /// <summary>Normalise map tilesheet paths for the current platform.</summary>
+        /// <param name="map">The map whose tilesheets to fix.</param>
+        private void NormaliseTilesheetPaths(Map map)
+        {
+            foreach (TileSheet tilesheet in map.TileSheets)
+                tilesheet.ImageSource = this.NormalisePathSeparators(tilesheet.ImageSource);
         }
 
         /// <summary>Fix custom map tilesheet paths so they can be found by the content manager.</summary>
