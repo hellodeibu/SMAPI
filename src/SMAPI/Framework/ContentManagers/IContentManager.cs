@@ -22,8 +22,8 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <summary>The absolute path to the <see cref="ContentManager.RootDirectory"/>.</summary>
         string FullRootDirectory { get; }
 
-        /// <summary>Whether this content manager is for a mod folder.</summary>
-        bool IsModContentManager { get; }
+        /// <summary>Whether this content manager can be targeted by managed asset keys (e.g. to load assets from a mod folder).</summary>
+        bool IsNamespaced { get; }
 
 
         /*********
@@ -32,25 +32,9 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <summary>Load an asset that has been processed by the content pipeline.</summary>
         /// <typeparam name="T">The type of asset to load.</typeparam>
         /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
-        T Load<T>(string assetName);
-
-        /// <summary>Load an asset that has been processed by the content pipeline.</summary>
-        /// <typeparam name="T">The type of asset to load.</typeparam>
-        /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
         /// <param name="language">The language code for which to load content.</param>
-        T Load<T>(string assetName, LocalizedContentManager.LanguageCode language);
-
-        /// <summary>Inject an asset into the cache.</summary>
-        /// <typeparam name="T">The type of asset to inject.</typeparam>
-        /// <param name="assetName">The asset path relative to the loader root directory, not including the <c>.xnb</c> extension.</param>
-        /// <param name="value">The asset value.</param>
-        /// <param name="language">The language code for which to inject the asset.</param>
-        void Inject<T>(string assetName, T value, LocalizedContentManager.LanguageCode language);
-
-        /// <summary>Get a copy of the given asset if supported.</summary>
-        /// <typeparam name="T">The asset type.</typeparam>
-        /// <param name="asset">The asset to clone.</param>
-        T CloneIfPossible<T>(T asset);
+        /// <param name="useCache">Whether to read/write the loaded asset to the asset cache.</param>
+        T Load<T>(string assetName, LocalizedContentManager.LanguageCode language, bool useCache);
 
         /// <summary>Perform any cleanup needed when the locale changes.</summary>
         void OnLocaleChanged();

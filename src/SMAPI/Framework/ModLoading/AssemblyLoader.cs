@@ -6,9 +6,9 @@ using System.Reflection;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using StardewModdingAPI.Framework.Exceptions;
-using StardewModdingAPI.Internal;
 using StardewModdingAPI.Metadata;
 using StardewModdingAPI.Toolkit.Framework.ModData;
+using StardewModdingAPI.Toolkit.Utilities;
 
 namespace StardewModdingAPI.Framework.ModLoading
 {

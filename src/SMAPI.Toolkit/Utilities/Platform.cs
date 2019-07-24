@@ -1,7 +1,7 @@
-namespace StardewModdingAPI.Internal
+namespace StardewModdingAPI.Toolkit.Utilities
 {
     /// <summary>The game's platform version.</summary>
-    internal enum Platform
+    public enum Platform
     {
         /// <summary>The Linux version of the game.</summary>
         Linux,

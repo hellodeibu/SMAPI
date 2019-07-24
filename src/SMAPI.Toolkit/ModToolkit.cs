@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using StardewModdingAPI.Toolkit.Framework.Clients.Wiki;
+using StardewModdingAPI.Toolkit.Framework.GameScanning;
 using StardewModdingAPI.Toolkit.Framework.ModData;
 using StardewModdingAPI.Toolkit.Framework.ModScanning;
 using StardewModdingAPI.Toolkit.Serialisation;
@@ -46,6 +47,13 @@ namespace StardewModdingAPI.Toolkit
             this.UserAgent = $"SMAPI Mod Handler Toolkit/{version}";
         }
 
+        /// <summary>Find valid Stardew Valley install folders.</summary>
+        /// <remarks>This checks default game locations, and on Windows checks the Windows registry for GOG/Steam install data. A folder is considered 'valid' if it contains the Stardew Valley executable for the current OS.</remarks>
+        public IEnumerable<DirectoryInfo> GetGameFolders()
+        {
+            return new GameScanner().Scan();
+        }
+
         /// <summary>Extract mod metadata from the wiki compatibility list.</summary>
         public async Task<WikiModList> GetWikiCompatibilityListAsync()
         {
@@ -72,7 +80,6 @@ namespace StardewModdingAPI.Toolkit
         /// <summary>Extract information about all mods in the given folder.</summary>
         /// <param name="rootPath">The root folder containing mods. Only the <paramref name="modPath"/> will be searched, but this field allows it to be treated as a potential mod folder of its own.</param>
         /// <param name="modPath">The mod path to search.</param>
-        // /// <param name="tryConsolidateMod">If the folder contains multiple XNB mods, treat them as subfolders of a single mod. This is useful when reading a single mod archive, as opposed to a mods folder.</param>
         public IEnumerable<ModFolder> GetModFolders(string rootPath, string modPath)
         {
             return new ModScanner(this.JsonHelper).GetModFolders(rootPath, modPath);

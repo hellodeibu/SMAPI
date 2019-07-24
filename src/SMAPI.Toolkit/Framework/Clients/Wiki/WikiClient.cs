@@ -99,6 +99,7 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
                 string customUrl = this.GetAttribute(node, "data-url");
                 string anchor = this.GetAttribute(node, "id");
                 string contentPackFor = this.GetAttribute(node, "data-content-pack-for");
+                string devNote = this.GetAttribute(node, "data-dev-note");
 
                 // parse stable compatibility
                 WikiCompatibilityInfo compatibility = new WikiCompatibilityInfo
@@ -127,9 +128,14 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
                     }
                 }
 
-                // parse SMAPI 3.0 readiness status
-                WikiSmapi3Status smapi3Status = this.GetAttributeAsEnum<WikiSmapi3Status>(node, "data-smapi-3-status") ?? WikiSmapi3Status.Unknown;
-                string smapi3Url = this.GetAttribute(node, "data-smapi-3-url");
+                // parse links
+                List<Tuple<Uri, string>> metadataLinks = new List<Tuple<Uri, string>>();
+                foreach (HtmlNode linkElement in node.Descendants("td").Last().Descendants("a").Skip(1)) // skip anchor link
+                {
+                    string text = linkElement.InnerText.Trim();
+                    Uri url = new Uri(linkElement.GetAttributeValue("href", ""));
+                    metadataLinks.Add(Tuple.Create(url, text));
+                }
 
                 // yield model
                 yield return new WikiModEntry
@@ -146,9 +152,9 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
                     ContentPackFor = contentPackFor,
                     Compatibility = compatibility,
                     BetaCompatibility = betaCompatibility,
-                    Smapi3Status = smapi3Status,
-                    Smapi3Url = smapi3Url,
                     Warnings = warnings,
+                    MetadataLinks = metadataLinks.ToArray(),
+                    DevNote = devNote,
                     Anchor = anchor
                 };
             }

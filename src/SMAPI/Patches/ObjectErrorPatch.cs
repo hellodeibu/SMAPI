@@ -27,13 +27,13 @@ namespace StardewModdingAPI.Patches
             // object.getDescription
             harmony.Patch(
                 original: AccessTools.Method(typeof(SObject), nameof(SObject.getDescription)),
-                prefix: new HarmonyMethod(this.GetType(), nameof(ObjectErrorPatch.Object_GetDescription_Prefix))
+                prefix: new HarmonyMethod(this.GetType(), nameof(ObjectErrorPatch.Before_Object_GetDescription))
             );
 
             // IClickableMenu.drawToolTip
             harmony.Patch(
                 original: AccessTools.Method(typeof(IClickableMenu), nameof(IClickableMenu.drawToolTip)),
-                prefix: new HarmonyMethod(this.GetType(), nameof(ObjectErrorPatch.IClickableMenu_DrawTooltip_Prefix))
+                prefix: new HarmonyMethod(this.GetType(), nameof(ObjectErrorPatch.Before_IClickableMenu_DrawTooltip))
             );
         }
 
@@ -47,7 +47,7 @@ namespace StardewModdingAPI.Patches
         /// <returns>Returns whether to execute the original method.</returns>
         /// <remarks>This method must be static for Harmony to work correctly. See the Harmony documentation before renaming arguments.</remarks>
         [SuppressMessage("ReSharper", "InconsistentNaming", Justification = "Argument names are defined by Harmony.")]
-        private static bool Object_GetDescription_Prefix(SObject __instance, ref string __result)
+        private static bool Before_Object_GetDescription(SObject __instance, ref string __result)
         {
             // invalid bigcraftables crash instead of showing '???' like invalid non-bigcraftables
             if (!__instance.IsRecipe && __instance.bigCraftable.Value && !Game1.bigCraftablesInformation.ContainsKey(__instance.ParentSheetIndex))
@@ -65,7 +65,7 @@ namespace StardewModdingAPI.Patches
         /// <returns>Returns whether to execute the original method.</returns>
         /// <remarks>This method must be static for Harmony to work correctly. See the Harmony documentation before renaming arguments.</remarks>
         [SuppressMessage("ReSharper", "InconsistentNaming", Justification = "Argument names are defined by Harmony.")]
-        private static bool IClickableMenu_DrawTooltip_Prefix(IClickableMenu __instance, Item hoveredItem)
+        private static bool Before_IClickableMenu_DrawTooltip(IClickableMenu __instance, Item hoveredItem)
         {
             // invalid edible item cause crash when drawing tooltips
             if (hoveredItem is SObject obj && obj.Edibility != -300 && !Game1.objectInformation.ContainsKey(obj.ParentSheetIndex))

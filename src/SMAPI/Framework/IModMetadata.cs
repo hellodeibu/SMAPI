@@ -16,10 +16,13 @@ namespace StardewModdingAPI.Framework
         /// <summary>The mod's display name.</summary>
         string DisplayName { get; }
 
-        /// <summary>The mod's full directory path.</summary>
+        /// <summary>The root path containing mods.</summary>
+        string RootPath { get; }
+
+        /// <summary>The mod's full directory path within the <see cref="RootPath"/>.</summary>
         string DirectoryPath { get; }
 
-        /// <summary>The <see cref="DirectoryPath"/> relative to the game's Mods folder.</summary>
+        /// <summary>The <see cref="DirectoryPath"/> relative to the <see cref="RootPath"/>.</summary>
         string RelativeDirectoryPath { get; }
 
         /// <summary>Metadata about the mod from SMAPI's internal data (if any).</summary>
@@ -108,5 +111,8 @@ namespace StardewModdingAPI.Framework
         /// <summary>Get whether the mod has a given warning and it hasn't been suppressed in the <see cref="DataRecord"/>.</summary>
         /// <param name="warning">The warning to check.</param>
         bool HasUnsuppressWarning(ModWarning warning);
+
+        /// <summary>Get a relative path which includes the root folder name.</summary>
+        string GetRelativePathWithRoot();
     }
 }

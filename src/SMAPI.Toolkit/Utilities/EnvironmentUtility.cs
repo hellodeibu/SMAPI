@@ -6,10 +6,10 @@ using System.Management;
 #endif
 using System.Runtime.InteropServices;
 
-namespace StardewModdingAPI.Internal
+namespace StardewModdingAPI.Toolkit.Utilities
 {
     /// <summary>Provides methods for fetching environment information.</summary>
-    internal static class EnvironmentUtility
+    public static class EnvironmentUtility
     {
         /*********
         ** Fields
@@ -41,7 +41,7 @@ namespace StardewModdingAPI.Internal
             }
         }
 
-        
+
         /// <summary>Get the human-readable OS name and version.</summary>
         /// <param name="platform">The current platform.</param>
         [SuppressMessage("ReSharper", "EmptyGeneralCatchClause", Justification = "Error suppressed deliberately to fallback to default behaviour.")]
@@ -76,6 +76,7 @@ namespace StardewModdingAPI.Internal
         {
             return platform == Platform.Linux || platform == Platform.Mac;
         }
+
 
         /*********
         ** Private methods
