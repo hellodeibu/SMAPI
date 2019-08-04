@@ -15,6 +15,12 @@ These changes have not been released yet.
   * Dropped support for all deprecated APIs.
   * Updated to Json.NET 12.0.1.
 
+## 2.11.2-deibu
+Released 9 June 2019 for Stardew Valley 1.3.36.
+
+* For players & modders:
+  * Added --no-interactive startup mode that disables interaction in SMAPI's terminal.
+
 ## 2.11.2
 Released 22 April 2019 for Stardew Valley 1.3.36.
 
@@ -276,7 +282,7 @@ Released 14 August 2018 for Stardew Valley 1.3.28.
   * Fixed `.ToSButton()` methods not being public.
 
 * For SMAPI developers:
-  * Dropped support for pre-SMAPI-2.6 update checks in the web API.  
+  * Dropped support for pre-SMAPI-2.6 update checks in the web API.
     _These are no longer useful, even if the player still has earlier versions of SMAPI. Older versions of SMAPI won't launch in Stardew Valley 1.3 (so they won't check for updates), and newer versions of SMAPI/mods won't work with older versions of the game._
 
 ## 2.6
@@ -453,7 +459,7 @@ Released 24 February 2018 for Stardew Valley 1.2.30–1.2.33.
 Released 24 February 2018 for Stardew Valley 1.2.30–1.2.33.
 
 * For players:
-  * **Added support for [content packs](https://stardewvalleywiki.com/Modding:Content_packs)**.  
+  * **Added support for [content packs](https://stardewvalleywiki.com/Modding:Content_packs)**.
     <small>_Content packs are collections of files for a SMAPI mod to load. These can be installed directly under `Mods` like a normal SMAPI mod, get automatic update and compatibility checks, and provide convenient APIs to the mods that read them._</small>
   * Added mod detection for unhandled errors (so most errors now mention which mod caused them).
   * Added install scripts for Linux/Mac (no more manual terminal commands!).
@@ -586,20 +592,20 @@ Released 01 November 2017 for Stardew Valley 1.2.30–1.2.33.
 Released 14 October 2017 for Stardew Valley 1.2.30–1.2.33.
 
 ### Release highlights
-* **Mod update checks**  
+* **Mod update checks**
   SMAPI now checks if your mods have updates available, and will alert you in the console with a convenient link to the
   mod page. This works with mods from the Chucklefish mod site, GitHub, or Nexus Mods. SMAPI 2.0 launches with
   update-check support for over 250 existing mods, and more will be added as modders enable the feature.
 
-* **Mod stability warnings**  
+* **Mod stability warnings**
   SMAPI now detects when a mod contains code which can destabilise your game or corrupt your save, and shows a warning
   in the console.
 
-* **Simpler console**  
+* **Simpler console**
    The console is now simpler and easier to read, some commands have been streamlined, and the colors now adjust to fit
    your terminal background color.
 
-* **New features for modders**  
+* **New features for modders**
   SMAPI 2.0 adds several features to enable new kinds of mods (see
   [API documentation](https://stardewvalleywiki.com/Modding:Modder_Guide/APIs)).
 
@@ -621,7 +627,7 @@ Released 14 October 2017 for Stardew Valley 1.2.30–1.2.33.
   Finally, the `SDate` utility now has a `DayOfWeek` field for more convenient date calculations, and `ISemanticVersion`
   now implements `IEquatable<ISemanticVersion>`.
 
-* **Goodbye deprecated code**  
+* **Goodbye deprecated code**
   SMAPI 2.0 removes all deprecated code to unshackle future development. That includes...
   * removed all code marked obsolete;
   * removed TrainerMod's `save` and `load` commands;
@@ -740,7 +746,7 @@ For modders:
 * Added a `ModID` property to all mod helpers for extension methods.
 * Changed `manifest.MinimumApiVersion` from string to `ISemanticVersion`. This shouldn't affect mods unless they referenced that field in code.
 * Fixed `SemanticVersion` parsing some invalid versions into close approximations (like `1.apple` &rarr; `1.0-apple`).
-* Fixed `SemanticVersion` not treating hyphens as separators when comparing prerelease tags.  
+* Fixed `SemanticVersion` not treating hyphens as separators when comparing prerelease tags.
   <small>_(While that was technically correct, it leads to unintuitive behaviour like sorting `-alpha-2` _after_ `-alpha-10`, even though `-alpha.2` sorts before `-alpha.10`.)_</small>
 * Fixed corrupted state exceptions not being logged by SMAPI.
 * Increased all deprecations to _pending removal_.
@@ -769,8 +775,8 @@ For players:
 For modders:
 * You can now add dependencies to `manifest.json` (see [API reference](https://stardewvalleywiki.com/Modding:Modder_Guide/APIs/Manifest)).
 * You can now translate your mod (see [API reference](https://stardewvalleywiki.com/Modding:Modder_Guide/APIs/Translation)).
-* You can now load unpacked `.tbin` files from your mod folder through the content API.  
-* SMAPI now automatically fixes tilesheet references for maps loaded from the mod folder.  
+* You can now load unpacked `.tbin` files from your mod folder through the content API.
+* SMAPI now automatically fixes tilesheet references for maps loaded from the mod folder.
   <small>_When loading a map from the mod folder, SMAPI will automatically use tilesheets relative to the map file if they exists. Otherwise it will default to tilesheets in the game content._</small>
 * Added `Context.IsPlayerFree` for mods that need to check if the player can act (i.e. save is loaded, no menu is displayed, no cutscene is in progress, etc).
 * Added `Context.IsInDrawLoop` for specialised mods.
@@ -799,7 +805,7 @@ For players:
 * Updated mod compatibility list for Stardew Valley 1.2.
 
 For mod developers:
-* Added a `Context.IsWorldReady` flag for mods to use.  
+* Added a `Context.IsWorldReady` flag for mods to use.
   <small>_This indicates whether a save is loaded and the world is finished initialising, which starts at the same point that `SaveEvents.AfterLoad` and `TimeEvents.AfterDayStarted` are raised. This is mainly useful for events which can be raised before the world is loaded (like update tick)._</small>
 * Added a `debug` console command which lets you run the game's debug commands (e.g. `debug warp FarmHouse 1 1` warps you to the farmhouse).
 * Added basic context info to logs to simplify troubleshooting.
@@ -978,7 +984,7 @@ For players:
   * Fixed an issue where mods weren't notified of a menu change if it changed while SMAPI was still notifying mods of the previous change.
 
 For developers:
-  * Deprecated `Version` in favour of `SemanticVersion`.  
+  * Deprecated `Version` in favour of `SemanticVersion`.
     _This new implementation is [semver 2.0](https://semver.org/)-compliant, introduces `NewerThan(version)` and `OlderThan(version)` convenience methods, adds support for parsing a version string into a `SemanticVersion`, and fixes various bugs with the former implementation. This also replaces `Manifest` with `IManifest`._
   * Increased deprecation levels for `SObject`, `Extensions`, `LogWriter` (not `Log`), `SPlayer`, and `Mod.Entry(ModHelper)` (not `Mod.Entry(IModHelper)`).
 

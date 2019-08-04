@@ -130,7 +130,8 @@ namespace StardewModdingAPI.Framework
         /// <summary>Construct an instance.</summary>
         /// <param name="modsPath">The path to search for mods.</param>
         /// <param name="writeToConsole">Whether to output log messages to the console.</param>
-        public SCore(string modsPath, bool writeToConsole)
+        /// <param name="interactiveConsole">Whether to enable interactive console mode.</param>
+        public SCore(string modsPath, bool writeToConsole, bool interactiveConsole = true)
         {
             // init paths
             this.VerifyPath(modsPath);
@@ -147,6 +148,7 @@ namespace StardewModdingAPI.Framework
             this.Monitor = new Monitor("SMAPI", this.ConsoleManager, this.LogFile, this.CancellationTokenSource, this.Settings.ColorScheme, this.Settings.VerboseLogging)
             {
                 WriteToConsole = writeToConsole,
+                InteractiveConsole = interactiveConsole,
                 ShowTraceInConsole = this.Settings.DeveloperMode,
                 ShowFullStampInConsole = this.Settings.DeveloperMode
             };
@@ -261,8 +263,12 @@ namespace StardewModdingAPI.Framework
                     {
                         this.Monitor.Log("A new version of SMAPI was detected last time you played.", LogLevel.Error);
                         this.Monitor.Log($"You can update to {updateFound}: https://smapi.io.", LogLevel.Error);
-                        this.Monitor.Log("Press any key to continue playing anyway. (This only appears when using a SMAPI beta.)", LogLevel.Info);
-                        Console.ReadKey();
+
+                        if (this.Monitor.InteractiveConsole)
+                        {
+                            this.Monitor.Log("Press any key to continue playing anyway. (This only appears when using a SMAPI beta.)", LogLevel.Info);
+                            Console.ReadKey();
+                        }
                     }
                 }
                 File.Delete(Constants.UpdateMarker);
@@ -273,8 +279,13 @@ namespace StardewModdingAPI.Framework
             {
                 this.Monitor.Log("The game crashed last time you played. That can be due to bugs in the game, but if it happens repeatedly you can ask for help here: https://community.playstarbound.com/threads/108375/.", LogLevel.Error);
                 this.Monitor.Log("If you ask for help, make sure to share your SMAPI log: https://log.smapi.io.", LogLevel.Error);
-                this.Monitor.Log("Press any key to delete the crash data and continue playing.", LogLevel.Info);
-                Console.ReadKey();
+
+                if (this.Monitor.InteractiveConsole)
+                {
+                    this.Monitor.Log("Press any key to delete the crash data and continue playing.", LogLevel.Info);
+                    Console.ReadKey();
+                }
+
                 File.Delete(Constants.FatalCrashLog);
                 File.Delete(Constants.FatalCrashMarker);
             }
@@ -358,6 +369,9 @@ namespace StardewModdingAPI.Framework
                 this.Monitor.Log($"You configured SMAPI to not check for updates. Running an old version of SMAPI is not recommended. You can enable update checks by reinstalling SMAPI or editing {Constants.ApiConfigPath}.", LogLevel.Warn);
             if (!this.Monitor.WriteToConsole)
                 this.Monitor.Log("Writing to the terminal is disabled because the --no-terminal argument was received. This usually means launching the terminal failed.", LogLevel.Warn);
+            if (!this.Monitor.InteractiveConsole)
+                this.Monitor.Log("Sending commands via the terminal is disabled because the --no-interactive argument was received.", LogLevel.Info);
+
             this.Monitor.VerboseLog("Verbose logging enabled.");
 
             // validate XNB integrity
@@ -415,7 +429,8 @@ namespace StardewModdingAPI.Framework
             Console.Title = $"SMAPI {Constants.ApiVersion} - running Stardew Valley {Constants.GameVersion} with {modsLoaded} mods";
 
             // start SMAPI console
-            new Thread(this.RunConsoleLoop).Start();
+            if (this.Monitor.InteractiveConsole)
+                new Thread(this.RunConsoleLoop).Start();
         }
 
         /// <summary>Handle the game changing locale.</summary>
@@ -1304,7 +1319,8 @@ namespace StardewModdingAPI.Framework
             if (showMessage)
                 Console.WriteLine("Game has ended. Press any key to exit.");
             Thread.Sleep(100);
-            Console.ReadKey();
+            if (this.Monitor.InteractiveConsole)
+                Console.ReadKey();
             Environment.Exit(0);
         }
 
@@ -1315,6 +1331,7 @@ namespace StardewModdingAPI.Framework
             return new Monitor(name, this.ConsoleManager, this.LogFile, this.CancellationTokenSource, this.Settings.ColorScheme, this.Settings.VerboseLogging)
             {
                 WriteToConsole = this.Monitor.WriteToConsole,
+                InteractiveConsole = this.Monitor.InteractiveConsole,
                 ShowTraceInConsole = this.Settings.DeveloperMode,
                 ShowFullStampInConsole = this.Settings.DeveloperMode
             };
