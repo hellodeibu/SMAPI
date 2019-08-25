@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using StardewModdingAPI.Framework.Reflection;
@@ -37,6 +38,13 @@ namespace StardewModdingAPI.Framework.ModHelpers
             this.Registry = registry;
             this.ProxyFactory = proxyFactory;
             this.Monitor = monitor;
+        }
+
+        public void LoadModsFromPath(string path, Action onLoaded = null)
+        {
+            this.Registry.LoadModsFromPath(path, (mods) => {
+                onLoaded();
+            });
         }
 
         /// <summary>Get metadata for all loaded mods.</summary>

@@ -13,9 +13,17 @@ namespace StardewModdingAPI.Framework.ModLoading
     /// <summary>Finds and processes mod metadata.</summary>
     internal class ModResolver
     {
+        private ModRegistry Registry;
+
         /*********
         ** Public methods
         *********/
+
+        public ModResolver(ModRegistry registry)
+        {
+            this.Registry = registry;
+        }
+
         /// <summary>Get manifest metadata for each folder in the given root path.</summary>
         /// <param name="toolkit">The mod toolkit.</param>
         /// <param name="rootPath">The root path to search for mods.</param>
@@ -232,6 +240,17 @@ namespace StardewModdingAPI.Framework.ModLoading
         /*********
         ** Private methods
         *********/
+
+        private IModMetadata[] FullModList(IModMetadata[] mods)
+        {
+            // Create combined list of previously loaded mods, if any, as-well as the current batch.
+            List<IModMetadata> full = new List<IModMetadata>();
+            full.AddRange(this.Registry.GetAll());
+            full.AddRange(mods);
+
+            return full.ToArray();
+        }
+
         /// <summary>Sort a mod's dependencies by the order they should be loaded, and remove any mods that can't be loaded due to missing or conflicting dependencies.</summary>
         /// <param name="mods">The full list of mods being validated.</param>
         /// <param name="modDatabase">Handles access to SMAPI's internal mod metadata list.</param>
@@ -242,6 +261,12 @@ namespace StardewModdingAPI.Framework.ModLoading
         /// <returns>Returns the mod dependency status.</returns>
         private ModDependencyStatus ProcessDependencies(IModMetadata[] mods, ModDatabase modDatabase, IModMetadata mod, IDictionary<IModMetadata, ModDependencyStatus> states, Stack<IModMetadata> sortedMods, ICollection<IModMetadata> currentChain)
         {
+            if (!states.ContainsKey(mod) && mod.HasID() && this.Registry.Get(mod.Manifest?.UniqueID) != null)
+            {
+                Console.WriteLine($"Skipping testing {mod.DisplayName}, it has already been loaded previously.");
+                return ModDependencyStatus.Sorted;
+            }
+
             // check if already visited
             switch (states[mod])
             {
@@ -328,7 +353,7 @@ namespace StardewModdingAPI.Framework.ModLoading
                         continue;
 
                     // detect dependency loop
-                    if (states[requiredMod] == ModDependencyStatus.Checking)
+                    if (states.ContainsKey(requiredMod) && states[requiredMod] == ModDependencyStatus.Checking)
                     {
                         sortedMods.Push(mod);
                         mod.SetStatus(ModMetadataStatus.Failed, $"its dependencies have a circular reference: {string.Join(" => ", subchain.Select(p => p.DisplayName))} => {requiredMod.DisplayName}).");
@@ -337,6 +362,7 @@ namespace StardewModdingAPI.Framework.ModLoading
 
                     // recursively process each dependency
                     var substatus = this.ProcessDependencies(mods, modDatabase, requiredMod, states, sortedMods, subchain);
+
                     switch (substatus)
                     {
                         // sorted successfully
@@ -385,10 +411,11 @@ namespace StardewModdingAPI.Framework.ModLoading
 
         /// <summary>Get the dependencies declared in a manifest.</summary>
         /// <param name="manifest">The mod manifest.</param>
-        /// <param name="loadedMods">The loaded mods.</param>
-        private IEnumerable<ModDependency> GetDependenciesFrom(IManifest manifest, IModMetadata[] loadedMods)
+        /// <param name="mods"></param>
+        private IEnumerable<ModDependency> GetDependenciesFrom(IManifest manifest, IModMetadata[] mods)
         {
-            IModMetadata FindMod(string id) => loadedMods.FirstOrDefault(m => m.HasID(id));
+            IModMetadata[] full = this.FullModList(mods);
+            IModMetadata FindMod(string id) => full.FirstOrDefault(m => m.HasID(id));
 
             // yield dependencies
             if (manifest.Dependencies != null)

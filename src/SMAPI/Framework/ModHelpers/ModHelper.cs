@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using StardewModdingAPI.Events;
 using StardewModdingAPI.Framework.Input;
-using StardewModdingAPI.Toolkit.Serialisation;
 
 namespace StardewModdingAPI.Framework.ModHelpers
 {

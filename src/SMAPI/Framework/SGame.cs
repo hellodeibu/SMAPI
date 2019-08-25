@@ -51,7 +51,7 @@ namespace StardewModdingAPI.Framework
         private readonly EventManager Events;
 
         /// <summary>Tracks the installed mods.</summary>
-        private readonly ModRegistry ModRegistry;
+        public readonly ModRegistry ModRegistry;
 
         /// <summary>Manages deprecation warnings.</summary>
         private readonly DeprecationManager DeprecationManager;

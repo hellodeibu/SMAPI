@@ -5,7 +5,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Security;
 using System.Text;
@@ -15,9 +14,6 @@ using System.Threading;
 using System.Windows.Forms;
 #endif
 using Newtonsoft.Json;
-using StardewModdingAPI.Events;
-using StardewModdingAPI.Framework.Events;
-using StardewModdingAPI.Framework.Exceptions;
 using StardewModdingAPI.Framework.Logging;
 using StardewModdingAPI.Framework.Models;
 using StardewModdingAPI.Framework.ModHelpers;
@@ -29,8 +25,6 @@ using StardewModdingAPI.Internal;
 using StardewModdingAPI.Patches;
 using StardewModdingAPI.Toolkit;
 using StardewModdingAPI.Toolkit.Framework.Clients.WebApi;
-using StardewModdingAPI.Toolkit.Framework.ModData;
-using StardewModdingAPI.Toolkit.Serialisation;
 using StardewModdingAPI.Toolkit.Utilities;
 using StardewValley;
 using Object = StardewValley.Object;
@@ -66,17 +60,14 @@ namespace StardewModdingAPI.Framework
         private readonly SConfig Settings;
 
         /// <summary>The underlying game instance.</summary>
-        private SGame GameInstance;
+        public SGame GameInstance;
 
         /// <summary>The underlying content manager.</summary>
         private ContentCoordinator ContentCore => this.GameInstance.ContentCore;
 
         /// <summary>Tracks the installed mods.</summary>
         /// <remarks>This is initialised after the game starts.</remarks>
-        private readonly ModRegistry ModRegistry = new ModRegistry();
-
-        /// <summary>Manages SMAPI events for mods.</summary>
-        private readonly EventManager EventManager;
+        private readonly ModRegistry ModRegistry;
 
         /// <summary>Whether the game is currently running.</summary>
         private bool IsGameRunning;
@@ -153,8 +144,6 @@ namespace StardewModdingAPI.Framework
                 ShowFullStampInConsole = this.Settings.DeveloperMode
             };
             this.MonitorForGame = this.GetSecondaryMonitor("game");
-            this.EventManager = new EventManager(this.Monitor, this.ModRegistry);
-            SCore.DeprecationManager = new DeprecationManager(this.Monitor, this.ModRegistry);
 
             // redirect direct console output
             if (this.MonitorForGame.WriteToConsole)
@@ -166,6 +155,17 @@ namespace StardewModdingAPI.Framework
             if (modsPath != Constants.DefaultModsPath)
                 this.Monitor.Log("(Using custom --mods-path argument.)", LogLevel.Trace);
             this.Monitor.Log($"Log started at {DateTime.UtcNow:s} UTC", LogLevel.Trace);
+
+            // init ModRegistry
+            this.ModRegistry = new ModRegistry(
+                this,
+                this.Monitor,
+                this.Toolkit.JsonHelper,
+                this.Reflection,
+                this.Settings);
+
+            // Init deprecation manager
+            SCore.DeprecationManager = new DeprecationManager(this.Monitor, this.ModRegistry);
 
             // validate platform
 #if SMAPI_FOR_WINDOWS
@@ -212,7 +212,18 @@ namespace StardewModdingAPI.Framework
 
                 // override game
                 SGame.ConstructorHack = new SGameConstructorHack(this.Monitor, this.Reflection, this.Toolkit.JsonHelper);
-                this.GameInstance = new SGame(this.Monitor, this.MonitorForGame, this.Reflection, this.EventManager, this.Toolkit.JsonHelper, this.ModRegistry, SCore.DeprecationManager, this.OnLocaleChanged, this.InitialiseAfterGameStart, this.Dispose);
+                this.GameInstance = new SGame(
+                    this.Monitor,
+                    this.MonitorForGame,
+                    this.Reflection,
+                    this.ModRegistry.EventManager,
+                    this.Toolkit.JsonHelper,
+                    this.ModRegistry,
+                    SCore.DeprecationManager,
+                    this.OnLocaleChanged,
+                    this.InitialiseAfterGameStart,
+                    this.Dispose
+                );
                 StardewValley.Program.gamePtr = this.GameInstance;
 
                 // apply game patches
@@ -243,8 +254,7 @@ namespace StardewModdingAPI.Framework
                 }).Start();
 
                 // set window titles
-                this.GameInstance.Window.Title = $"Stardew Valley {Constants.GameVersion} - running SMAPI {Constants.ApiVersion}";
-                Console.Title = $"SMAPI {Constants.ApiVersion} - running Stardew Valley {Constants.GameVersion}";
+                this.UpdateWindowTitles();
             }
             catch (Exception ex)
             {
@@ -355,7 +365,6 @@ namespace StardewModdingAPI.Framework
             Process.GetCurrentProcess().Kill();
         }
 
-
         /*********
         ** Private methods
         *********/
@@ -378,28 +387,9 @@ namespace StardewModdingAPI.Framework
             if (!this.ValidateContentIntegrity())
                 this.Monitor.Log("SMAPI found problems in your game's content files which are likely to cause errors or crashes. Consider uninstalling XNB mods or reinstalling the game.", LogLevel.Error);
 
-            // load mod data
-            ModToolkit toolkit = new ModToolkit();
-            ModDatabase modDatabase = toolkit.GetModDatabase(Constants.ApiMetadataPath);
-
-            // load mods
+            // Load mods
+            this.ModRegistry.LoadModsFromPath(this.ModsPath, (mods) =>
             {
-                this.Monitor.Log("Loading mod metadata...", LogLevel.Trace);
-                ModResolver resolver = new ModResolver();
-
-                // load manifests
-                IModMetadata[] mods = resolver.ReadManifests(toolkit, this.ModsPath, modDatabase).ToArray();
-
-                // filter out ignored mods
-                foreach (IModMetadata mod in mods.Where(p => p.IsIgnored))
-                    this.Monitor.Log($"  Skipped {mod.RelativeDirectoryPath} (folder name starts with a dot).", LogLevel.Trace);
-                mods = mods.Where(p => !p.IsIgnored).ToArray();
-
-                // load mods
-                resolver.ValidateManifests(mods, Constants.ApiVersion, toolkit.GetUpdateUrl);
-                mods = resolver.ProcessDependencies(mods, modDatabase).ToArray();
-                this.LoadMods(mods, this.Toolkit.JsonHelper, this.ContentCore, modDatabase);
-
                 // write metadata file
                 if (this.Settings.DumpMetadata)
                 {
@@ -408,7 +398,7 @@ namespace StardewModdingAPI.Framework
                         Exported = DateTime.UtcNow.ToString("O"),
                         ApiVersion = Constants.ApiVersion.ToString(),
                         GameVersion = Constants.GameVersion.ToString(),
-                        ModFolderPath = this.ModsPath,
+                        ModFolderPath = ModsPath,
                         Mods = mods
                     };
                     this.Toolkit.JsonHelper.WriteJsonFile(Path.Combine(Constants.LogDir, $"{Constants.LogNamePrefix}metadata-dump.json"), export);
@@ -416,21 +406,32 @@ namespace StardewModdingAPI.Framework
 
                 // check for updates
                 this.CheckForUpdatesAsync(mods);
-            }
+            });
+
             if (this.Monitor.IsExiting)
             {
                 this.Monitor.Log("SMAPI shutting down: aborting initialisation.", LogLevel.Warn);
                 return;
             }
 
-            // update window titles
-            int modsLoaded = this.ModRegistry.GetAll().Count();
-            this.GameInstance.Window.Title = $"Stardew Valley {Constants.GameVersion} - running SMAPI {Constants.ApiVersion} with {modsLoaded} mods";
-            Console.Title = $"SMAPI {Constants.ApiVersion} - running Stardew Valley {Constants.GameVersion} with {modsLoaded} mods";
+            this.UpdateWindowTitles();
 
             // start SMAPI console
             if (this.Monitor.InteractiveConsole)
                 new Thread(this.RunConsoleLoop).Start();
+        }
+
+        public void UpdateWindowTitles()
+        {
+            int modsLoaded = this.ModRegistry.GetAll().Count();
+            string withMods = "";
+
+            if (modsLoaded > 0)
+                withMods = $" with {modsLoaded} mods";
+                
+            // update window titles
+            this.GameInstance.Window.Title = $"Stardew Valley {Constants.GameVersion} - running SMAPI {Constants.ApiVersion}{withMods}";
+            Console.Title = $"SMAPI {Constants.ApiVersion} - running Stardew Valley {Constants.GameVersion}{withMods}";
         }
 
         /// <summary>Handle the game changing locale.</summary>
@@ -709,533 +710,6 @@ namespace StardewModdingAPI.Framework
             }
         }
 
-        /// <summary>Load and hook up the given mods.</summary>
-        /// <param name="mods">The mods to load.</param>
-        /// <param name="jsonHelper">The JSON helper with which to read mods' JSON files.</param>
-        /// <param name="contentCore">The content manager to use for mod content.</param>
-        /// <param name="modDatabase">Handles access to SMAPI's internal mod metadata list.</param>
-        private void LoadMods(IModMetadata[] mods, JsonHelper jsonHelper, ContentCoordinator contentCore, ModDatabase modDatabase)
-        {
-            this.Monitor.Log("Loading mods...", LogLevel.Trace);
-
-            // load mods
-            IDictionary<IModMetadata, Tuple<string, string>> skippedMods = new Dictionary<IModMetadata, Tuple<string, string>>();
-            using (AssemblyLoader modAssemblyLoader = new AssemblyLoader(Constants.Platform, this.Monitor, this.Settings.ParanoidWarnings))
-            {
-                // init
-                HashSet<string> suppressUpdateChecks = new HashSet<string>(this.Settings.SuppressUpdateChecks, StringComparer.InvariantCultureIgnoreCase);
-                InterfaceProxyFactory proxyFactory = new InterfaceProxyFactory();
-                void LogSkip(IModMetadata mod, string errorPhrase, string errorDetails)
-                {
-                    skippedMods[mod] = Tuple.Create(errorPhrase, errorDetails);
-                    if (mod.Status != ModMetadataStatus.Failed)
-                        mod.SetStatus(ModMetadataStatus.Failed, errorPhrase);
-                }
-
-                // load mods
-                foreach (IModMetadata contentPack in mods)
-                {
-                    if (!this.TryLoadMod(contentPack, mods, modAssemblyLoader, proxyFactory, jsonHelper, contentCore, modDatabase, suppressUpdateChecks, out string errorPhrase, out string errorDetails))
-                        LogSkip(contentPack, errorPhrase, errorDetails);
-                }
-            }
-            IModMetadata[] loadedContentPacks = this.ModRegistry.GetAll(assemblyMods: false).ToArray();
-            IModMetadata[] loadedMods = this.ModRegistry.GetAll(contentPacks: false).ToArray();
-
-            // unlock content packs
-            this.ModRegistry.AreAllModsLoaded = true;
-
-            // log loaded mods
-            this.Monitor.Log($"Loaded {loadedMods.Length} mods" + (loadedMods.Length > 0 ? ":" : "."), LogLevel.Info);
-            foreach (IModMetadata metadata in loadedMods.OrderBy(p => p.DisplayName))
-            {
-                IManifest manifest = metadata.Manifest;
-                this.Monitor.Log(
-                    $"   {metadata.DisplayName} {manifest.Version}"
-                    + (!string.IsNullOrWhiteSpace(manifest.Author) ? $" by {manifest.Author}" : "")
-                    + (!string.IsNullOrWhiteSpace(manifest.Description) ? $" | {manifest.Description}" : ""),
-                    LogLevel.Info
-                );
-            }
-            this.Monitor.Newline();
-
-            // log loaded content packs
-            if (loadedContentPacks.Any())
-            {
-                string GetModDisplayName(string id) => loadedMods.FirstOrDefault(p => p.HasID(id))?.DisplayName;
-
-                this.Monitor.Log($"Loaded {loadedContentPacks.Length} content packs:", LogLevel.Info);
-                foreach (IModMetadata metadata in loadedContentPacks.OrderBy(p => p.DisplayName))
-                {
-                    IManifest manifest = metadata.Manifest;
-                    this.Monitor.Log(
-                        $"   {metadata.DisplayName} {manifest.Version}"
-                        + (!string.IsNullOrWhiteSpace(manifest.Author) ? $" by {manifest.Author}" : "")
-                        + (metadata.IsContentPack ? $" | for {GetModDisplayName(metadata.Manifest.ContentPackFor.UniqueID)}" : "")
-                        + (!string.IsNullOrWhiteSpace(manifest.Description) ? $" | {manifest.Description}" : ""),
-                        LogLevel.Info
-                    );
-                }
-                this.Monitor.Newline();
-            }
-
-            // log mod warnings
-            this.LogModWarnings(this.ModRegistry.GetAll().ToArray(), skippedMods);
-
-            // initialise translations
-            this.ReloadTranslations(loadedMods);
-
-            // initialise loaded non-content-pack mods
-            foreach (IModMetadata metadata in loadedMods)
-            {
-                // add interceptors
-                if (metadata.Mod.Helper.Content is ContentHelper helper)
-                {
-                    // ReSharper disable SuspiciousTypeConversion.Global
-                    if (metadata.Mod is IAssetEditor editor)
-                        helper.ObservableAssetEditors.Add(editor);
-                    if (metadata.Mod is IAssetLoader loader)
-                        helper.ObservableAssetLoaders.Add(loader);
-                    // ReSharper restore SuspiciousTypeConversion.Global
-
-                    this.ContentCore.Editors[metadata] = helper.ObservableAssetEditors;
-                    this.ContentCore.Loaders[metadata] = helper.ObservableAssetLoaders;
-                }
-
-                // call entry method
-                try
-                {
-                    IMod mod = metadata.Mod;
-                    mod.Entry(mod.Helper);
-                }
-                catch (Exception ex)
-                {
-                    metadata.LogAsMod($"Mod crashed on entry and might not work correctly. Technical details:\n{ex.GetLogSummary()}", LogLevel.Error);
-                }
-
-                // get mod API
-                try
-                {
-                    object api = metadata.Mod.GetApi();
-                    if (api != null && !api.GetType().IsPublic)
-                    {
-                        api = null;
-                        this.Monitor.Log($"{metadata.DisplayName} provides an API instance with a non-public type. This isn't currently supported, so the API won't be available to other mods.", LogLevel.Warn);
-                    }
-
-                    if (api != null)
-                        this.Monitor.Log($"   Found mod-provided API ({api.GetType().FullName}).", LogLevel.Trace);
-                    metadata.SetApi(api);
-                }
-                catch (Exception ex)
-                {
-                    this.Monitor.Log($"Failed loading mod-provided API for {metadata.DisplayName}. Integrations with other mods may not work. Error: {ex.GetLogSummary()}", LogLevel.Error);
-                }
-            }
-
-            // invalidate cache entries when needed
-            // (These listeners are registered after Entry to avoid repeatedly reloading assets as mods initialise.)
-            foreach (IModMetadata metadata in loadedMods)
-            {
-                if (metadata.Mod.Helper.Content is ContentHelper helper)
-                {
-                    helper.ObservableAssetEditors.CollectionChanged += (sender, e) =>
-                    {
-                        if (e.NewItems?.Count > 0)
-                        {
-                            this.Monitor.Log("Invalidating cache entries for new asset editors...", LogLevel.Trace);
-                            this.ContentCore.InvalidateCacheFor(e.NewItems.Cast<IAssetEditor>().ToArray(), new IAssetLoader[0]);
-                        }
-                    };
-                    helper.ObservableAssetLoaders.CollectionChanged += (sender, e) =>
-                    {
-                        if (e.NewItems?.Count > 0)
-                        {
-                            this.Monitor.Log("Invalidating cache entries for new asset loaders...", LogLevel.Trace);
-                            this.ContentCore.InvalidateCacheFor(new IAssetEditor[0], e.NewItems.Cast<IAssetLoader>().ToArray());
-                        }
-                    };
-                }
-            }
-
-            // reset cache now if any editors or loaders were added during entry
-            IAssetEditor[] editors = loadedMods.SelectMany(p => p.Mod.Helper.Content.AssetEditors).ToArray();
-            IAssetLoader[] loaders = loadedMods.SelectMany(p => p.Mod.Helper.Content.AssetLoaders).ToArray();
-            if (editors.Any() || loaders.Any())
-            {
-                this.Monitor.Log("Invalidating cached assets for new editors & loaders...", LogLevel.Trace);
-                this.ContentCore.InvalidateCacheFor(editors, loaders);
-            }
-
-            // unlock mod integrations
-            this.ModRegistry.AreAllModsInitialised = true;
-        }
-
-        /// <summary>Load a given mod.</summary>
-        /// <param name="mod">The mod to load.</param>
-        /// <param name="mods">The mods being loaded.</param>
-        /// <param name="assemblyLoader">Preprocesses and loads mod assemblies</param>
-        /// <param name="proxyFactory">Generates proxy classes to access mod APIs through an arbitrary interface.</param>
-        /// <param name="jsonHelper">The JSON helper with which to read mods' JSON files.</param>
-        /// <param name="contentCore">The content manager to use for mod content.</param>
-        /// <param name="modDatabase">Handles access to SMAPI's internal mod metadata list.</param>
-        /// <param name="suppressUpdateChecks">The mod IDs to ignore when validating update keys.</param>
-        /// <param name="errorReasonPhrase">The user-facing reason phrase explaining why the mod couldn't be loaded (if applicable).</param>
-        /// <param name="errorDetails">More detailed details about the error intended for developers (if any).</param>
-        /// <returns>Returns whether the mod was successfully loaded.</returns>
-        private bool TryLoadMod(IModMetadata mod, IModMetadata[] mods, AssemblyLoader assemblyLoader, InterfaceProxyFactory proxyFactory, JsonHelper jsonHelper, ContentCoordinator contentCore, ModDatabase modDatabase, HashSet<string> suppressUpdateChecks, out string errorReasonPhrase, out string errorDetails)
-        {
-            errorDetails = null;
-
-            // log entry
-            {
-                string relativePath = PathUtilities.GetRelativePath(this.ModsPath, mod.DirectoryPath);
-                if (mod.IsContentPack)
-                    this.Monitor.Log($"   {mod.DisplayName} ({relativePath}) [content pack]...", LogLevel.Trace);
-                else if (mod.Manifest?.EntryDll != null)
-                    this.Monitor.Log($"   {mod.DisplayName} ({relativePath}{Path.DirectorySeparatorChar}{mod.Manifest.EntryDll})...", LogLevel.Trace); // don't use Path.Combine here, since EntryDLL might not be valid
-                else
-                    this.Monitor.Log($"   {mod.DisplayName} ({relativePath})...", LogLevel.Trace);
-            }
-
-            // add warning for missing update key
-            if (mod.HasID() && !suppressUpdateChecks.Contains(mod.Manifest.UniqueID) && !mod.HasValidUpdateKeys())
-                mod.SetWarning(ModWarning.NoUpdateKeys);
-
-            // validate status
-            if (mod.Status == ModMetadataStatus.Failed)
-            {
-                this.Monitor.Log($"      Failed: {mod.Error}", LogLevel.Trace);
-                errorReasonPhrase = mod.Error;
-                return false;
-            }
-
-            // validate dependencies
-            // Although dependences are validated before mods are loaded, a dependency may have failed to load.
-            if (mod.Manifest.Dependencies?.Any() == true)
-            {
-                foreach (IManifestDependency dependency in mod.Manifest.Dependencies.Where(p => p.IsRequired))
-                {
-                    if (this.ModRegistry.Get(dependency.UniqueID) == null)
-                    {
-                        string dependencyName = mods
-                            .FirstOrDefault(otherMod => otherMod.HasID(dependency.UniqueID))
-                            ?.DisplayName ?? dependency.UniqueID;
-                        errorReasonPhrase = $"it needs the '{dependencyName}' mod, which couldn't be loaded.";
-                        return false;
-                    }
-                }
-            }
-
-            // load as content pack
-            if (mod.IsContentPack)
-            {
-                IManifest manifest = mod.Manifest;
-                IMonitor monitor = this.GetSecondaryMonitor(mod.DisplayName);
-                IContentHelper contentHelper = new ContentHelper(this.ContentCore, mod.DirectoryPath, manifest.UniqueID, mod.DisplayName, monitor);
-                IContentPack contentPack = new ContentPack(mod.DirectoryPath, manifest, contentHelper, jsonHelper);
-                mod.SetMod(contentPack, monitor);
-                this.ModRegistry.Add(mod);
-
-                errorReasonPhrase = null;
-                return true;
-            }
-
-            // load as mod
-            else
-            {
-                IManifest manifest = mod.Manifest;
-
-                // load mod
-                string assemblyPath = manifest?.EntryDll != null
-                    ? Path.Combine(mod.DirectoryPath, manifest.EntryDll)
-                    : null;
-                Assembly modAssembly;
-                try
-                {
-                    modAssembly = assemblyLoader.Load(mod, assemblyPath, assumeCompatible: mod.DataRecord?.Status == ModStatus.AssumeCompatible);
-                    this.ModRegistry.TrackAssemblies(mod, modAssembly);
-                }
-                catch (IncompatibleInstructionException) // details already in trace logs
-                {
-                    string[] updateUrls = new[] { modDatabase.GetModPageUrlFor(manifest.UniqueID), "https://mods.smapi.io" }.Where(p => p != null).ToArray();
-                    errorReasonPhrase = $"it's no longer compatible. Please check for a new version at {string.Join(" or ", updateUrls)}";
-                    return false;
-                }
-                catch (SAssemblyLoadFailedException ex)
-                {
-                    errorReasonPhrase = $"it DLL couldn't be loaded: {ex.Message}";
-                    return false;
-                }
-                catch (Exception ex)
-                {
-                    errorReasonPhrase = "its DLL couldn't be loaded.";
-                    errorDetails = $"Error: {ex.GetLogSummary()}";
-                    return false;
-                }
-
-                // initialise mod
-                try
-                {
-                    // get mod instance
-                    if (!this.TryLoadModEntry(modAssembly, out Mod modEntry, out errorReasonPhrase))
-                        return false;
-
-                    // get content packs
-                    IContentPack[] GetContentPacks()
-                    {
-                        if (!this.ModRegistry.AreAllModsLoaded)
-                            throw new InvalidOperationException("Can't access content packs before SMAPI finishes loading mods.");
-
-                        return this.ModRegistry
-                            .GetAll(assemblyMods: false)
-                            .Where(p => p.IsContentPack && mod.HasID(p.Manifest.ContentPackFor.UniqueID))
-                            .Select(p => p.ContentPack)
-                            .ToArray();
-                    }
-
-                    // init mod helpers
-                    IMonitor monitor = this.GetSecondaryMonitor(mod.DisplayName);
-                    IModHelper modHelper;
-                    {
-                        IModEvents events = new ModEvents(mod, this.EventManager);
-                        ICommandHelper commandHelper = new CommandHelper(mod, this.GameInstance.CommandManager);
-                        IContentHelper contentHelper = new ContentHelper(contentCore, mod.DirectoryPath, manifest.UniqueID, mod.DisplayName, monitor);
-                        IContentPackHelper contentPackHelper = new ContentPackHelper(manifest.UniqueID, new Lazy<IContentPack[]>(GetContentPacks), CreateFakeContentPack);
-                        IDataHelper dataHelper = new DataHelper(manifest.UniqueID, mod.DirectoryPath, jsonHelper);
-                        IReflectionHelper reflectionHelper = new ReflectionHelper(manifest.UniqueID, mod.DisplayName, this.Reflection);
-                        IModRegistry modRegistryHelper = new ModRegistryHelper(manifest.UniqueID, this.ModRegistry, proxyFactory, monitor);
-                        IMultiplayerHelper multiplayerHelper = new MultiplayerHelper(manifest.UniqueID, this.GameInstance.Multiplayer);
-                        ITranslationHelper translationHelper = new TranslationHelper(manifest.UniqueID, manifest.Name, contentCore.GetLocale(), contentCore.Language);
-
-                        IContentPack CreateFakeContentPack(string packDirPath, IManifest packManifest)
-                        {
-                            IMonitor packMonitor = this.GetSecondaryMonitor(packManifest.Name);
-                            IContentHelper packContentHelper = new ContentHelper(contentCore, packDirPath, packManifest.UniqueID, packManifest.Name, packMonitor);
-                            return new ContentPack(packDirPath, packManifest, packContentHelper, this.Toolkit.JsonHelper);
-                        }
-
-                        modHelper = new ModHelper(manifest.UniqueID, mod.DirectoryPath, this.GameInstance.Input, events, contentHelper, contentPackHelper, commandHelper, dataHelper, modRegistryHelper, reflectionHelper, multiplayerHelper, translationHelper);
-                    }
-
-                    // init mod
-                    modEntry.ModManifest = manifest;
-                    modEntry.Helper = modHelper;
-                    modEntry.Monitor = monitor;
-
-                    // track mod
-                    mod.SetMod(modEntry);
-                    this.ModRegistry.Add(mod);
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    errorReasonPhrase = $"initialisation failed:\n{ex.GetLogSummary()}";
-                    return false;
-                }
-            }
-        }
-
-        /// <summary>Write a summary of mod warnings to the console and log.</summary>
-        /// <param name="mods">The loaded mods.</param>
-        /// <param name="skippedMods">The mods which were skipped, along with the friendly and developer reasons.</param>
-        private void LogModWarnings(IModMetadata[] mods, IDictionary<IModMetadata, Tuple<string, string>> skippedMods)
-        {
-            // get mods with warnings
-            IModMetadata[] modsWithWarnings = mods.Where(p => p.Warnings != ModWarning.None).ToArray();
-            if (!modsWithWarnings.Any() && !skippedMods.Any())
-                return;
-
-            // log intro
-            {
-                int count = modsWithWarnings.Union(skippedMods.Keys).Count();
-                this.Monitor.Log($"Found {count} mod{(count == 1 ? "" : "s")} with warnings:", LogLevel.Info);
-            }
-
-            // log skipped mods
-            if (skippedMods.Any())
-            {
-                this.Monitor.Log("   Skipped mods", LogLevel.Error);
-                this.Monitor.Log("   " + "".PadRight(50, '-'), LogLevel.Error);
-                this.Monitor.Log("      These mods could not be added to your game.", LogLevel.Error);
-                this.Monitor.Newline();
-
-                HashSet<string> logged = new HashSet<string>();
-                foreach (var pair in skippedMods.OrderBy(p => p.Key.DisplayName))
-                {
-                    IModMetadata mod = pair.Key;
-                    string errorReason = pair.Value.Item1;
-                    string errorDetails = pair.Value.Item2;
-                    string message = $"      - {mod.DisplayName}{(mod.Manifest?.Version != null ? " " + mod.Manifest.Version.ToString() : "")} because {errorReason}";
-
-                    if (!logged.Add($"{message}|{errorDetails}"))
-                        continue; // skip duplicate messages (e.g. if multiple copies of the mod are installed)
-
-                    this.Monitor.Log(message, LogLevel.Error);
-                    if (errorDetails != null)
-                        this.Monitor.Log($"        ({errorDetails})", LogLevel.Trace);
-                }
-                this.Monitor.Newline();
-            }
-
-            // log warnings
-            if (modsWithWarnings.Any())
-            {
-                // issue block format logic
-                void LogWarningGroup(ModWarning warning, LogLevel logLevel, string heading, params string[] blurb)
-                {
-                    IModMetadata[] matches = modsWithWarnings
-                        .Where(mod => mod.HasUnsuppressWarning(warning))
-                        .ToArray();
-                    if (!matches.Any())
-                        return;
-
-                    this.Monitor.Log("   " + heading, logLevel);
-                    this.Monitor.Log("   " + "".PadRight(50, '-'), logLevel);
-                    foreach (string line in blurb)
-                        this.Monitor.Log("      " + line, logLevel);
-                    this.Monitor.Newline();
-                    foreach (IModMetadata match in matches)
-                        this.Monitor.Log($"      - {match.DisplayName}", logLevel);
-                    this.Monitor.Newline();
-                }
-
-                // supported issues
-                LogWarningGroup(ModWarning.BrokenCodeLoaded, LogLevel.Error, "Broken mods",
-                    "These mods have broken code, but you configured SMAPI to load them anyway. This may cause bugs,",
-                    "errors, or crashes in-game."
-                );
-                LogWarningGroup(ModWarning.ChangesSaveSerialiser, LogLevel.Warn, "Changed save serialiser",
-                    "These mods change the save serialiser. They may corrupt your save files, or make them unusable if",
-                    "you uninstall these mods."
-                );
-                if (this.Settings.ParanoidWarnings)
-                {
-                    LogWarningGroup(ModWarning.AccessesFilesystem, LogLevel.Warn, "Accesses filesystem directly",
-                        "These mods directly access the filesystem, and you enabled paranoid warnings. (Note that this may be",
-                        "legitimate and innocent usage; this warning is meaningless without further investigation.)"
-                    );
-                    LogWarningGroup(ModWarning.AccessesShell, LogLevel.Warn, "Accesses shell/process directly",
-                        "These mods directly access the OS shell or processes, and you enabled paranoid warnings. (Note that",
-                        "this may be legitimate and innocent usage; this warning is meaningless without further investigation.)"
-                    );
-                }
-                LogWarningGroup(ModWarning.PatchesGame, LogLevel.Info, "Patched game code",
-                    "These mods directly change the game code. They're more likely to cause errors or bugs in-game; if",
-                    "your game has issues, try removing these first. Otherwise you can ignore this warning."
-                );
-                LogWarningGroup(ModWarning.UsesUnvalidatedUpdateTick, LogLevel.Info, "Bypassed safety checks",
-                    "These mods bypass SMAPI's normal safety checks, so they're more likely to cause errors or save",
-                    "corruption. If your game has issues, try removing these first."
-                );
-                LogWarningGroup(ModWarning.NoUpdateKeys, LogLevel.Debug, "No update keys",
-                    "These mods have no update keys in their manifest. SMAPI may not notify you about updates for these",
-                    "mods. Consider notifying the mod authors about this problem."
-                );
-                LogWarningGroup(ModWarning.UsesDynamic, LogLevel.Debug, "Not crossplatform",
-                    "These mods use the 'dynamic' keyword, and won't work on Linux/Mac."
-                );
-            }
-        }
-
-        /// <summary>Load a mod's entry class.</summary>
-        /// <param name="modAssembly">The mod assembly.</param>
-        /// <param name="mod">The loaded instance.</param>
-        /// <param name="error">The error indicating why loading failed (if applicable).</param>
-        /// <returns>Returns whether the mod entry class was successfully loaded.</returns>
-        private bool TryLoadModEntry(Assembly modAssembly, out Mod mod, out string error)
-        {
-            mod = null;
-
-            // find type
-            TypeInfo[] modEntries = modAssembly.DefinedTypes.Where(type => typeof(Mod).IsAssignableFrom(type) && !type.IsAbstract).Take(2).ToArray();
-            if (modEntries.Length == 0)
-            {
-                error = $"its DLL has no '{nameof(Mod)}' subclass.";
-                return false;
-            }
-            if (modEntries.Length > 1)
-            {
-                error = $"its DLL contains multiple '{nameof(Mod)}' subclasses.";
-                return false;
-            }
-
-            // get implementation
-            mod = (Mod)modAssembly.CreateInstance(modEntries[0].ToString());
-            if (mod == null)
-            {
-                error = "its entry class couldn't be instantiated.";
-                return false;
-            }
-
-            error = null;
-            return true;
-        }
-
-        /// <summary>Reload translations for all mods.</summary>
-        /// <param name="mods">The mods for which to reload translations.</param>
-        private void ReloadTranslations(IEnumerable<IModMetadata> mods)
-        {
-            JsonHelper jsonHelper = this.Toolkit.JsonHelper;
-            foreach (IModMetadata metadata in mods)
-            {
-                if (metadata.IsContentPack)
-                    throw new InvalidOperationException("Can't reload translations for a content pack.");
-
-                // read translation files
-                IDictionary<string, IDictionary<string, string>> translations = new Dictionary<string, IDictionary<string, string>>();
-                DirectoryInfo translationsDir = new DirectoryInfo(Path.Combine(metadata.DirectoryPath, "i18n"));
-                if (translationsDir.Exists)
-                {
-                    foreach (FileInfo file in translationsDir.EnumerateFiles("*.json"))
-                    {
-                        string locale = Path.GetFileNameWithoutExtension(file.Name.ToLower().Trim());
-                        try
-                        {
-                            if (jsonHelper.ReadJsonFileIfExists(file.FullName, out IDictionary<string, string> data))
-                                translations[locale] = data;
-                            else
-                                metadata.LogAsMod($"Mod's i18n/{locale}.json file couldn't be parsed.", LogLevel.Warn);
-                        }
-                        catch (Exception ex)
-                        {
-                            metadata.LogAsMod($"Mod's i18n/{locale}.json file couldn't be parsed: {ex.GetLogSummary()}", LogLevel.Warn);
-                        }
-                    }
-                }
-
-                // validate translations
-                foreach (string locale in translations.Keys.ToArray())
-                {
-                    // skip empty files
-                    if (translations[locale] == null || !translations[locale].Keys.Any())
-                    {
-                        metadata.LogAsMod($"Mod's i18n/{locale}.json is empty and will be ignored.", LogLevel.Warn);
-                        translations.Remove(locale);
-                        continue;
-                    }
-
-                    // handle duplicates
-                    HashSet<string> keys = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
-                    HashSet<string> duplicateKeys = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
-                    foreach (string key in translations[locale].Keys.ToArray())
-                    {
-                        if (!keys.Add(key))
-                        {
-                            duplicateKeys.Add(key);
-                            translations[locale].Remove(key);
-                        }
-                    }
-                    if (duplicateKeys.Any())
-                        metadata.LogAsMod($"Mod's i18n/{locale}.json has duplicate translation keys: [{string.Join(", ", duplicateKeys)}]. Keys are case-insensitive.", LogLevel.Warn);
-                }
-
-                // update translation
-                TranslationHelper translationHelper = (TranslationHelper)metadata.Mod.Helper.Translation;
-                translationHelper.SetTranslations(translations);
-            }
-        }
-
         /// <summary>The method called when the user submits a core SMAPI command in the console.</summary>
         /// <param name="name">The command name.</param>
         /// <param name="arguments">The command arguments.</param>
@@ -1269,7 +743,7 @@ namespace StardewModdingAPI.Framework
                     break;
 
                 case "reload_i18n":
-                    this.ReloadTranslations(this.ModRegistry.GetAll(contentPacks: false));
+                    this.ModRegistry.ReloadTranslations(this.ModRegistry.GetAll(contentPacks: false));
                     this.Monitor.Log("Reloaded translation files for all mods. This only affects new translations the mods fetch; if they cached some text, it may not be updated.", LogLevel.Info);
                     break;
 
@@ -1326,7 +800,7 @@ namespace StardewModdingAPI.Framework
 
         /// <summary>Get a monitor instance derived from SMAPI's current settings.</summary>
         /// <param name="name">The name of the module which will log messages with this instance.</param>
-        private Monitor GetSecondaryMonitor(string name)
+        public Monitor GetSecondaryMonitor(string name)
         {
             return new Monitor(name, this.ConsoleManager, this.LogFile, this.CancellationTokenSource, this.Settings.ColorScheme, this.Settings.VerboseLogging)
             {
