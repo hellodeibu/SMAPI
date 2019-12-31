@@ -36,7 +36,7 @@ namespace StardewModdingAPI.Framework.Patching
                 }
                 catch (Exception ex)
                 {
-                    this.Monitor.Log($"Couldn't apply runtime patch '{patch.Name}' to the game. Some SMAPI features may not work correctly. See log file for details.", LogLevel.Error);
+                    this.Monitor.Log($"Couldn't apply runtime patch '{patch.Name}' to the game. Some {Constants.Name} features may not work correctly. See log file for details.", LogLevel.Error);
                     this.Monitor.Log(ex.GetLogSummary(), LogLevel.Trace);
                 }
             }

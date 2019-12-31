@@ -16,7 +16,6 @@ namespace StardewModdingAPI.Web.Controllers
 {
     /// <summary>Provides an info/download page about SMAPI.</summary>
     [Route("")]
-    [Route("install")]
     internal class IndexController : Controller
     {
         /*********
@@ -72,7 +71,7 @@ namespace StardewModdingAPI.Web.Controllers
                 : null;
 
             // render view
-            var model = new IndexModel(stableVersionModel, betaVersionModel, this.SiteConfig.BetaBlurb);
+            var model = new IndexModel(stableVersionModel, betaVersionModel, this.SiteConfig.BetaBlurb, this.SiteConfig.SupporterList);
             return this.View(model);
         }
 
@@ -141,7 +140,7 @@ namespace StardewModdingAPI.Web.Controllers
 
             foreach (GitAsset asset in release.Assets)
             {
-                if (asset.FileName.StartsWith("Z_OLD"))
+                if (asset.FileName.StartsWith("Z_"))
                     continue;
 
                 Match match = Regex.Match(asset.FileName, @"SMAPI-(?<version>[\d\.]+(?:-.+)?)-installer(?<forDevs>-for-developers)?.zip");
