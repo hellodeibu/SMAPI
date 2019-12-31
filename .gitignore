@@ -35,3 +35,4 @@ src/SMAPI.Web.LegacyRedirects/aws-beanstalk-tools-defaults.json
 
 # Azure generated files
 src/SMAPI.Web/Properties/PublishProfiles/*.pubxml
+.DS_Store
