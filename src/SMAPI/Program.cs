@@ -35,7 +35,7 @@ namespace StardewModdingAPI
         /// <param name="args">The command-line arguments.</param>
         public static void Main(string[] args)
         {
-            Program.InteractiveConsole = !args.Contains("--no-interactive");
+            Program.InteractiveConsole = !args.Contains("--noninteractive") && Environment.GetEnvironmentVariable("SMAPI_NONINTERACTIVE") == null;
 
             try
             {

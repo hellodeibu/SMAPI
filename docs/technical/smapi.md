@@ -46,6 +46,7 @@ or testing and may change without warning. On Linux/Mac, see _environment variab
 argument | purpose
 -------- | -------
 `--no-terminal` | SMAPI won't write anything to the console window. (Messages will still be written to the log file.)
+`--noninteractive` | SMAPI will run its console in read-only mode. (Messages will be written, but you cannot trigger commands.)
 `--mods-path` | The path to search for mods, if not the standard `Mods` folder. This can be a path relative to the game folder (like `--mods-path "Mods (test)"`) or an absolute path.
 
 ### Environment variables
@@ -57,6 +58,7 @@ environment variable | purpose
 -------------------- | -------
 `SMAPI_NO_TERMINAL` | Equivalent to `--no-terminal` above.
 `SMAPI_MODS_PATH` | Equivalent to `--mods-path` above.
+`SMAPI_NONINTERACTIVE` | Equivalent to `--noninteractive` above.
 
 
 ### Compile flags
