@@ -3,13 +3,16 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Xna.Framework.Graphics;
+using Netcode;
 using StardewModdingAPI.Framework.Reflection;
 using StardewValley;
 using StardewValley.BellsAndWhistles;
 using StardewValley.Buildings;
 using StardewValley.Characters;
+using StardewValley.GameData.Movies;
 using StardewValley.Locations;
 using StardewValley.Menus;
+using StardewValley.Network;
 using StardewValley.Objects;
 using StardewValley.Projectiles;
 using StardewValley.TerrainFeatures;
@@ -24,8 +27,8 @@ namespace StardewModdingAPI.Metadata
         /*********
         ** Fields
         *********/
-        /// <summary>Normalises an asset key to match the cache key.</summary>
-        private readonly Func<string, string> GetNormalisedPath;
+        /// <summary>Normalizes an asset key to match the cache key and assert that it's valid.</summary>
+        private readonly Func<string, string> AssertAndNormalizeAssetName;
 
         /// <summary>Simplifies access to private game code.</summary>
         private readonly Reflector Reflection;
@@ -33,7 +36,7 @@ namespace StardewModdingAPI.Metadata
         /// <summary>Encapsulates monitoring and logging.</summary>
         private readonly IMonitor Monitor;
 
-        /// <summary>Optimised bucket categories for batch reloading assets.</summary>
+        /// <summary>Optimized bucket categories for batch reloading assets.</summary>
         private enum AssetBucket
         {
             /// <summary>NPC overworld sprites.</summary>
@@ -50,13 +53,13 @@ namespace StardewModdingAPI.Metadata
         /*********
         ** Public methods
         *********/
-        /// <summary>Initialise the core asset data.</summary>
-        /// <param name="getNormalisedPath">Normalises an asset key to match the cache key.</param>
+        /// <summary>Initialize the core asset data.</summary>
+        /// <param name="assertAndNormalizeAssetName">Normalizes an asset key to match the cache key and assert that it's valid.</param>
         /// <param name="reflection">Simplifies access to private code.</param>
         /// <param name="monitor">Encapsulates monitoring and logging.</param>
-        public CoreAssetPropagator(Func<string, string> getNormalisedPath, Reflector reflection, IMonitor monitor)
+        public CoreAssetPropagator(Func<string, string> assertAndNormalizeAssetName, Reflector reflection, IMonitor monitor)
         {
-            this.GetNormalisedPath = getNormalisedPath;
+            this.AssertAndNormalizeAssetName = assertAndNormalizeAssetName;
             this.Reflection = reflection;
             this.Monitor = monitor;
         }
@@ -64,10 +67,10 @@ namespace StardewModdingAPI.Metadata
         /// <summary>Reload one of the game's core assets (if applicable).</summary>
         /// <param name="content">The content manager through which to reload the asset.</param>
         /// <param name="assets">The asset keys and types to reload.</param>
-        /// <returns>Returns the number of reloaded assets.</returns>
-        public int Propagate(LocalizedContentManager content, IDictionary<string, Type> assets)
+        /// <returns>Returns a lookup of asset names to whether they've been propagated.</returns>
+        public IDictionary<string, bool> Propagate(LocalizedContentManager content, IDictionary<string, Type> assets)
         {
-            // group into optimised lists
+            // group into optimized lists
             var buckets = assets.GroupBy(p =>
             {
                 if (this.IsInFolder(p.Key, "Characters") || this.IsInFolder(p.Key, "Characters\\Monsters"))
@@ -80,25 +83,26 @@ namespace StardewModdingAPI.Metadata
             });
 
             // reload assets
-            int reloaded = 0;
+            IDictionary<string, bool> propagated = assets.ToDictionary(p => p.Key, p => false, StringComparer.InvariantCultureIgnoreCase);
             foreach (var bucket in buckets)
             {
                 switch (bucket.Key)
                 {
                     case AssetBucket.Sprite:
-                        reloaded += this.ReloadNpcSprites(content, bucket.Select(p => p.Key));
+                        this.ReloadNpcSprites(content, bucket.Select(p => p.Key), propagated);
                         break;
 
                     case AssetBucket.Portrait:
-                        reloaded += this.ReloadNpcPortraits(content, bucket.Select(p => p.Key));
+                        this.ReloadNpcPortraits(content, bucket.Select(p => p.Key), propagated);
                         break;
 
                     default:
-                        reloaded += bucket.Count(p => this.PropagateOther(content, p.Key, p.Value));
+                        foreach (var entry in bucket)
+                            propagated[entry.Key] = this.PropagateOther(content, entry.Key, entry.Value);
                         break;
                 }
             }
-            return reloaded;
+            return propagated;
         }
 
 
@@ -112,7 +116,7 @@ namespace StardewModdingAPI.Metadata
         /// <returns>Returns whether an asset was loaded. The return value may be true or false, or a non-null value for true.</returns>
         private bool PropagateOther(LocalizedContentManager content, string key, Type type)
         {
-            key = this.GetNormalisedPath(key);
+            key = this.AssertAndNormalizeAssetName(key);
 
             /****
             ** Special case: current map tilesheet
@@ -123,7 +127,7 @@ namespace StardewModdingAPI.Metadata
             {
                 foreach (TileSheet tilesheet in Game1.currentLocation.map.TileSheets)
                 {
-                    if (this.GetNormalisedPath(tilesheet.ImageSource) == key)
+                    if (this.NormalizeAssetNameIgnoringEmpty(tilesheet.ImageSource) == key)
                         Game1.mapDisplayDevice.LoadTileSheet(tilesheet);
                 }
             }
@@ -136,7 +140,7 @@ namespace StardewModdingAPI.Metadata
                 bool anyChanged = false;
                 foreach (GameLocation location in this.GetLocations())
                 {
-                    if (!string.IsNullOrWhiteSpace(location.mapPath.Value) && this.GetNormalisedPath(location.mapPath.Value) == key)
+                    if (!string.IsNullOrWhiteSpace(location.mapPath.Value) && this.NormalizeAssetNameIgnoringEmpty(location.mapPath.Value) == key)
                     {
                         // general updates
                         location.reloadMap();
@@ -162,15 +166,11 @@ namespace StardewModdingAPI.Metadata
             ** Propagate by key
             ****/
             Reflector reflection = this.Reflection;
-            switch (key.ToLower().Replace("/", "\\")) // normalised key so we can compare statically
+            switch (key.ToLower().Replace("/", "\\")) // normalized key so we can compare statically
             {
                 /****
                 ** Animals
                 ****/
-                case "animals\\cat":
-                    return this.ReloadPetOrHorseSprites<Cat>(content, key);
-                case "animals\\dog":
-                    return this.ReloadPetOrHorseSprites<Dog>(content, key);
                 case "animals\\horse":
                     return this.ReloadPetOrHorseSprites<Horse>(content, key);
 
@@ -189,12 +189,14 @@ namespace StardewModdingAPI.Metadata
                     return true;
 
                 case "characters\\farmer\\farmer_base": // Farmer
+                case "characters\\farmer\\farmer_base_bald":
                     if (Game1.player == null || !Game1.player.IsMale)
                         return false;
                     Game1.player.FarmerRenderer = new FarmerRenderer(key, Game1.player);
                     return true;
 
                 case "characters\\farmer\\farmer_girl_base": // Farmer
+                case "characters\\farmer\\farmer_girl_base_bald":
                     if (Game1.player == null || Game1.player.IsMale)
                         return false;
                     Game1.player.FarmerRenderer = new FarmerRenderer(key, Game1.player);
@@ -206,6 +208,10 @@ namespace StardewModdingAPI.Metadata
 
                 case "characters\\farmer\\hats": // Game1.LoadContent
                     FarmerRenderer.hatsTexture = content.Load<Texture2D>(key);
+                    return true;
+
+                case "characters\\farmer\\pants": // Game1.LoadContent
+                    FarmerRenderer.pantsTexture = content.Load<Texture2D>(key);
                     return true;
 
                 case "characters\\farmer\\shirts": // Game1.LoadContent
@@ -223,6 +229,41 @@ namespace StardewModdingAPI.Metadata
                     Game1.bigCraftablesInformation = content.Load<Dictionary<int, string>>(key);
                     return true;
 
+                case "data\\bundles": // NetWorldState constructor
+                    {
+                        var bundles = this.Reflection.GetField<NetBundles>(Game1.netWorldState.Value, "bundles").GetValue();
+                        var rewards = this.Reflection.GetField<NetIntDictionary<bool, NetBool>>(Game1.netWorldState.Value, "bundleRewards").GetValue();
+                        foreach (var pair in content.Load<Dictionary<string, string>>(key))
+                        {
+                            int bundleKey = int.Parse(pair.Key.Split('/')[1]);
+                            int rewardsCount = pair.Value.Split('/')[2].Split(' ').Length;
+
+                            // add bundles
+                            if (!bundles.TryGetValue(bundleKey, out bool[] values) || values.Length < rewardsCount)
+                            {
+                                values ??= new bool[0];
+
+                                bundles.Remove(bundleKey);
+                                bundles[bundleKey] = values.Concat(Enumerable.Repeat(false, rewardsCount - values.Length)).ToArray();
+                            }
+
+                            // add bundle rewards
+                            if (!rewards.ContainsKey(bundleKey))
+                                rewards[bundleKey] = false;
+                        }
+                    }
+                    break;
+
+                case "data\\clothinginformation": // Game1.LoadContent
+                    Game1.clothingInformation = content.Load<Dictionary<int, string>>(key);
+                    return true;
+
+                case "data\\concessiontastes": // MovieTheater.GetConcessionTasteForCharacter
+                    this.Reflection
+                        .GetField<List<ConcessionTaste>>(typeof(MovieTheater), "_concessionTastes")
+                        .SetValue(content.Load<List<ConcessionTaste>>(key));
+                    return true;
+
                 case "data\\cookingrecipes": // CraftingRecipe.InitShared
                     CraftingRecipe.cookingRecipes = content.Load<Dictionary<string, string>>(key);
                     return true;
@@ -231,11 +272,30 @@ namespace StardewModdingAPI.Metadata
                     CraftingRecipe.craftingRecipes = content.Load<Dictionary<string, string>>(key);
                     return true;
 
+                case "data\\farmanimals": // FarmAnimal constructor
+                    return this.ReloadFarmAnimalData();
+
+                case "data\\moviereactions": // MovieTheater.GetMovieReactions
+                    this.Reflection
+                        .GetField<List<MovieCharacterReaction>>(typeof(MovieTheater), "_genericReactions")
+                        .SetValue(content.Load<List<MovieCharacterReaction>>(key));
+                    return true;
+
+                case "data\\movies": // MovieTheater.GetMovieData
+                    this.Reflection
+                        .GetField<Dictionary<string, MovieData>>(typeof(MovieTheater), "_movieData")
+                        .SetValue(content.Load<Dictionary<string, MovieData>>(key));
+                    return true;
+
                 case "data\\npcdispositions": // NPC constructor
                     return this.ReloadNpcDispositions(content, key);
 
                 case "data\\npcgifttastes": // Game1.LoadContent
                     Game1.NPCGiftTastes = content.Load<Dictionary<string, string>>(key);
+                    return true;
+
+                case "data\\objectcontexttags": // Game1.LoadContent
+                    Game1.objectContextTags = content.Load<Dictionary<string, string>>(key);
                     return true;
 
                 case "data\\objectinformation": // Game1.LoadContent
@@ -287,6 +347,14 @@ namespace StardewModdingAPI.Metadata
                 /****
                 ** Content\LooseSprites
                 ****/
+                case "loosesprites\\birds": // Game1.LoadContent
+                    Game1.birdsSpriteSheet = content.Load<Texture2D>(key);
+                    return true;
+
+                case "loosesprites\\concessions": // Game1.LoadContent
+                    Game1.concessionsSpriteSheet = content.Load<Texture2D>(key);
+                    return true;
+
                 case "loosesprites\\controllermaps": // Game1.LoadContent
                     Game1.controllerMaps = content.Load<Texture2D>(key);
                     return true;
@@ -298,6 +366,10 @@ namespace StardewModdingAPI.Metadata
                         foreach (ClickableTextureComponent button in new[] { menu.questButton, menu.zoomInButton, menu.zoomOutButton })
                             button.texture = Game1.mouseCursors;
                     }
+                    return true;
+
+                case "loosesprites\\cursors2": // Game1.LoadContent
+                    Game1.mouseCursors2 = content.Load<Texture2D>(key);
                     return true;
 
                 case "loosesprites\\daybg": // Game1.LoadContent
@@ -366,6 +438,10 @@ namespace StardewModdingAPI.Metadata
                     Game1.menuTexture = content.Load<Texture2D>(key);
                     return true;
 
+                case "maps\\menutilesuncolored": // Game1.LoadContent
+                    Game1.uncoloredMenuTexture = content.Load<Texture2D>(key);
+                    return true;
+
                 case "maps\\springobjects": // Game1.LoadContent
                     Game1.objectSpriteSheet = content.Load<Texture2D>(key);
                     return true;
@@ -426,8 +502,16 @@ namespace StardewModdingAPI.Metadata
                 /****
                 ** Content\TerrainFeatures
                 ****/
-                case "terrainfeatures\\flooring": // Flooring
+                case "terrainfeatures\\flooring": // from Flooring
                     Flooring.floorsTexture = content.Load<Texture2D>(key);
+                    return true;
+
+                case "terrainfeatures\\flooring_winter": // from Flooring
+                    Flooring.floorsTextureWinter = content.Load<Texture2D>(key);
+                    return true;
+
+                case "terrainfeatures\\grass": // from Grass
+                    this.ReloadGrassTextures(content, key);
                     return true;
 
                 case "terrainfeatures\\hoedirt": // from HoeDirt
@@ -467,6 +551,10 @@ namespace StardewModdingAPI.Metadata
             }
 
             // dynamic textures
+            if (this.KeyStartsWith(key, "animals\\cat"))
+                return this.ReloadPetOrHorseSprites<Cat>(content, key);
+            if (this.KeyStartsWith(key, "animals\\dog"))
+                return this.ReloadPetOrHorseSprites<Dog>(content, key);
             if (this.IsInFolder(key, "Animals"))
                 return this.ReloadFarmAnimalSprites(content, key);
 
@@ -504,6 +592,7 @@ namespace StardewModdingAPI.Metadata
             // find matches
             TAnimal[] animals = this.GetCharacters()
                 .OfType<TAnimal>()
+                .Where(p => key == this.NormalizeAssetNameIgnoringEmpty(p.Sprite?.Texture?.Name))
                 .ToArray();
             if (!animals.Any())
                 return false;
@@ -554,7 +643,7 @@ namespace StardewModdingAPI.Metadata
         {
             // get buildings
             string type = Path.GetFileName(key);
-            Building[] buildings = Game1.locations
+            Building[] buildings = this.GetLocations(buildingInteriors: false)
                 .OfType<BuildableGameLocation>()
                 .SelectMany(p => p.buildings)
                 .Where(p => p.buildingType.Value == type)
@@ -584,7 +673,7 @@ namespace StardewModdingAPI.Metadata
                     let locCritters = this.Reflection.GetField<List<Critter>>(location, "critters").GetValue()
                     where locCritters != null
                     from Critter critter in locCritters
-                    where this.GetNormalisedPath(critter.sprite.textureName) == key
+                    where this.NormalizeAssetNameIgnoringEmpty(critter.sprite?.Texture?.Name) == key
                     select critter
                 )
                 .ToArray();
@@ -597,6 +686,21 @@ namespace StardewModdingAPI.Metadata
                 this.SetSpriteTexture(entry.sprite, texture);
 
             return critters.Length;
+        }
+
+        /// <summary>Reload the data for matching farm animals.</summary>
+        /// <returns>Returns whether any farm animals were affected.</returns>
+        /// <remarks>Derived from the <see cref="FarmAnimal"/> constructor.</remarks>
+        private bool ReloadFarmAnimalData()
+        {
+            bool changed = false;
+            foreach (FarmAnimal animal in this.GetFarmAnimals())
+            {
+                animal.reloadData();
+                changed = true;
+            }
+
+            return changed;
         }
 
         /// <summary>Reload the sprites for a fence type.</summary>
@@ -626,96 +730,109 @@ namespace StardewModdingAPI.Metadata
             return true;
         }
 
+        /// <summary>Reload tree textures.</summary>
+        /// <param name="content">The content manager through which to reload the asset.</param>
+        /// <param name="key">The asset key to reload.</param>
+        /// <returns>Returns whether any textures were reloaded.</returns>
+        private bool ReloadGrassTextures(LocalizedContentManager content, string key)
+        {
+            Grass[] grasses =
+                (
+                    from location in this.GetLocations()
+                    from grass in location.terrainFeatures.Values.OfType<Grass>()
+                    let textureName = this.NormalizeAssetNameIgnoringEmpty(
+                        this.Reflection.GetMethod(grass, "textureName").Invoke<string>()
+                    )
+                    where textureName == key
+                    select grass
+                )
+                .ToArray();
+
+            if (grasses.Any())
+            {
+                Lazy<Texture2D> texture = new Lazy<Texture2D>(() => content.Load<Texture2D>(key));
+                foreach (Grass grass in grasses)
+                    this.Reflection.GetField<Lazy<Texture2D>>(grass, "texture").SetValue(texture);
+                return true;
+            }
+
+            return false;
+        }
+
         /// <summary>Reload the disposition data for matching NPCs.</summary>
         /// <param name="content">The content manager through which to reload the asset.</param>
         /// <param name="key">The asset key to reload.</param>
         /// <returns>Returns whether any NPCs were affected.</returns>
         private bool ReloadNpcDispositions(LocalizedContentManager content, string key)
         {
-            IDictionary<string, string> dispositions = content.Load<Dictionary<string, string>>(key);
-            foreach (NPC character in this.GetCharacters())
+            IDictionary<string, string> data = content.Load<Dictionary<string, string>>(key);
+            bool changed = false;
+            foreach (NPC npc in this.GetCharacters())
             {
-                if (!character.isVillager() || !dispositions.ContainsKey(character.Name))
-                    continue;
-
-                NPC clone = new NPC(null, character.Position, character.DefaultMap, character.FacingDirection, character.Name, null, character.Portrait, eventActor: false);
-                character.Age = clone.Age;
-                character.Manners = clone.Manners;
-                character.SocialAnxiety = clone.SocialAnxiety;
-                character.Optimism = clone.Optimism;
-                character.Gender = clone.Gender;
-                character.datable.Value = clone.datable.Value;
-                character.homeRegion = clone.homeRegion;
-                character.Birthday_Season = clone.Birthday_Season;
-                character.Birthday_Day = clone.Birthday_Day;
-                character.id = clone.id;
-                character.displayName = clone.displayName;
+                if (npc.isVillager() && data.ContainsKey(npc.Name))
+                {
+                    npc.reloadData();
+                    changed = true;
+                }
             }
 
-            return true;
+            return changed;
         }
 
         /// <summary>Reload the sprites for matching NPCs.</summary>
         /// <param name="content">The content manager through which to reload the asset.</param>
         /// <param name="keys">The asset keys to reload.</param>
-        /// <returns>Returns the number of reloaded assets.</returns>
-        private int ReloadNpcSprites(LocalizedContentManager content, IEnumerable<string> keys)
+        /// <param name="propagated">The asset keys which have been propagated.</param>
+        private void ReloadNpcSprites(LocalizedContentManager content, IEnumerable<string> keys, IDictionary<string, bool> propagated)
         {
             // get NPCs
             HashSet<string> lookup = new HashSet<string>(keys, StringComparer.InvariantCultureIgnoreCase);
-            NPC[] characters = this.GetCharacters()
-                .Where(npc => npc.Sprite != null && lookup.Contains(this.GetNormalisedPath(npc.Sprite.textureName.Value)))
+            var characters =
+                (
+                    from npc in this.GetCharacters()
+                    let key = this.NormalizeAssetNameIgnoringEmpty(npc.Sprite?.Texture?.Name)
+                    where key != null && lookup.Contains(key)
+                    select new { Npc = npc, Key = key }
+                )
                 .ToArray();
             if (!characters.Any())
-                return 0;
+                return;
 
             // update sprite
-            int reloaded = 0;
-            foreach (NPC npc in characters)
+            foreach (var target in characters)
             {
-                this.SetSpriteTexture(npc.Sprite, content.Load<Texture2D>(npc.Sprite.textureName.Value));
-                reloaded++;
+                this.SetSpriteTexture(target.Npc.Sprite, content.Load<Texture2D>(target.Key));
+                propagated[target.Key] = true;
             }
-
-            return reloaded;
         }
 
         /// <summary>Reload the portraits for matching NPCs.</summary>
         /// <param name="content">The content manager through which to reload the asset.</param>
         /// <param name="keys">The asset key to reload.</param>
-        /// <returns>Returns the number of reloaded assets.</returns>
-        private int ReloadNpcPortraits(LocalizedContentManager content, IEnumerable<string> keys)
+        /// <param name="propagated">The asset keys which have been propagated.</param>
+        private void ReloadNpcPortraits(LocalizedContentManager content, IEnumerable<string> keys, IDictionary<string, bool> propagated)
         {
             // get NPCs
             HashSet<string> lookup = new HashSet<string>(keys, StringComparer.InvariantCultureIgnoreCase);
-            var villagers =
+            var characters =
                 (
                     from npc in this.GetCharacters()
                     where npc.isVillager()
-                    let textureKey = this.GetNormalisedPath($"Portraits\\{this.getTextureName(npc)}")
-                    where lookup.Contains(textureKey)
-                    select new { npc, textureKey }
+
+                    let key = this.NormalizeAssetNameIgnoringEmpty(npc.Portrait?.Name)
+                    where key != null && lookup.Contains(key)
+                    select new { Npc = npc, Key = key }
                 )
                 .ToArray();
-            if (!villagers.Any())
-                return 0;
+            if (!characters.Any())
+                return;
 
             // update portrait
-            int reloaded = 0;
-            foreach (var entry in villagers)
+            foreach (var target in characters)
             {
-                entry.npc.resetPortrait();
-                entry.npc.Portrait = content.Load<Texture2D>(entry.textureKey);
-                reloaded++;
+                target.Npc.Portrait = content.Load<Texture2D>(target.Key);
+                propagated[target.Key] = true;
             }
-            return reloaded;
-        }
-
-        private string getTextureName(NPC npc)
-        {
-            string name = npc.Name;
-            string str = name == "Old Mariner" ? "Mariner" : (name == "Dwarf King" ? "DwarfKing" : (name == "Mister Qi" ? "MrQi" : (name == "???" ? "Monsters\\Shadow Guy" : name)));
-            return str;
         }
 
         /// <summary>Reload tree textures.</summary>
@@ -725,7 +842,7 @@ namespace StardewModdingAPI.Metadata
         /// <returns>Returns whether any textures were reloaded.</returns>
         private bool ReloadTreeTextures(LocalizedContentManager content, string key, int type)
         {
-            Tree[] trees = Game1.locations
+            Tree[] trees = this.GetLocations()
                 .SelectMany(p => p.terrainFeatures.Values.OfType<Tree>())
                 .Where(tree => tree.treeType.Value == type)
                 .ToArray();
@@ -734,7 +851,7 @@ namespace StardewModdingAPI.Metadata
             {
                 Lazy<Texture2D> texture = new Lazy<Texture2D>(() => content.Load<Texture2D>(key));
                 foreach (Tree tree in trees)
-                    this.Reflection.GetField<Lazy<Texture2D>>(tree, "texture").SetValue(texture);
+                    tree.texture = texture;
                 return true;
             }
 
@@ -776,6 +893,8 @@ namespace StardewModdingAPI.Metadata
             foreach (NPC villager in villagers)
             {
                 // reload schedule
+                this.Reflection.GetField<bool>(villager, "_hasLoadedMasterScheduleData").SetValue(false);
+                this.Reflection.GetField<Dictionary<string, string>>(villager, "_masterScheduleData").SetValue(null);
                 villager.Schedule = villager.getSchedule(Game1.dayOfMonth);
                 if (villager.Schedule == null)
                 {
@@ -828,7 +947,8 @@ namespace StardewModdingAPI.Metadata
         }
 
         /// <summary>Get all locations in the game.</summary>
-        private IEnumerable<GameLocation> GetLocations()
+        /// <param name="buildingInteriors">Whether to also get the interior locations for constructable buildings.</param>
+        private IEnumerable<GameLocation> GetLocations(bool buildingInteriors = true)
         {
             // get available root locations
             IEnumerable<GameLocation> rootLocations = Game1.locations;
@@ -840,7 +960,7 @@ namespace StardewModdingAPI.Metadata
             {
                 yield return location;
 
-                if (location is BuildableGameLocation buildableLocation)
+                if (buildingInteriors && location is BuildableGameLocation buildableLocation)
                 {
                     foreach (Building building in buildableLocation.buildings)
                     {
@@ -852,17 +972,30 @@ namespace StardewModdingAPI.Metadata
             }
         }
 
-        /// <summary>Get whether a key starts with a substring after the substring is normalised.</summary>
-        /// <param name="key">The key to check.</param>
-        /// <param name="rawSubstring">The substring to normalise and find.</param>
-        private bool KeyStartsWith(string key, string rawSubstring)
+        /// <summary>Normalize an asset key to match the cache key and assert that it's valid, but don't raise an error for null or empty values.</summary>
+        /// <param name="path">The asset key to normalize.</param>
+        private string NormalizeAssetNameIgnoringEmpty(string path)
         {
-            return key.StartsWith(this.GetNormalisedPath(rawSubstring), StringComparison.InvariantCultureIgnoreCase);
+            if (string.IsNullOrWhiteSpace(path))
+                return null;
+
+            return this.AssertAndNormalizeAssetName(path);
         }
 
-        /// <summary>Get whether a normalised asset key is in the given folder.</summary>
-        /// <param name="key">The normalised asset key (like <c>Animals/cat</c>).</param>
-        /// <param name="folder">The key folder (like <c>Animals</c>); doesn't need to be normalised.</param>
+        /// <summary>Get whether a key starts with a substring after the substring is normalized.</summary>
+        /// <param name="key">The key to check.</param>
+        /// <param name="rawSubstring">The substring to normalize and find.</param>
+        private bool KeyStartsWith(string key, string rawSubstring)
+        {
+            if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(rawSubstring))
+                return false;
+
+            return key.StartsWith(this.NormalizeAssetNameIgnoringEmpty(rawSubstring), StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        /// <summary>Get whether a normalized asset key is in the given folder.</summary>
+        /// <param name="key">The normalized asset key (like <c>Animals/cat</c>).</param>
+        /// <param name="folder">The key folder (like <c>Animals</c>); doesn't need to be normalized.</param>
         /// <param name="allowSubfolders">Whether to return true if the key is inside a subfolder of the <paramref name="folder"/>.</param>
         private bool IsInFolder(string key, string folder, bool allowSubfolders = false)
         {

@@ -105,6 +105,10 @@ namespace StardewModdingAPI.Framework
         /// <param name="validOnly">Only return valid update keys.</param>
         IEnumerable<UpdateKey> GetUpdateKeys(bool validOnly = true);
 
+        /// <summary>Get the mod IDs that must be installed to load this mod.</summary>
+        /// <param name="includeOptional">Whether to include optional dependencies.</param>
+        IEnumerable<string> GetRequiredModIds(bool includeOptional = false);
+
         /// <summary>Whether the mod has at least one valid update key set.</summary>
         bool HasValidUpdateKeys();
 

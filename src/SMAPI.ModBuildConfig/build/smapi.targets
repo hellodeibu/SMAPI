@@ -8,10 +8,6 @@
   ** Set build options
   **********************************************-->
   <PropertyGroup>
-    <!-- set build to x86 to avoid mismatched platform warnings (only affects mods using new csproj format) -->
-    <Platforms>x86</Platforms>
-    <PlatformTarget>x86</PlatformTarget>
-
     <!-- include PDB file by default to enable line numbers in stack traces -->
     <DebugType>pdbonly</DebugType>
     <DebugSymbols>true</DebugSymbols>

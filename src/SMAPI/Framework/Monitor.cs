@@ -50,18 +50,18 @@ namespace StardewModdingAPI.Framework
         /// <param name="source">The name of the module which logs messages using this instance.</param>
         /// <param name="consoleInterceptor">Intercepts access to the console output.</param>
         /// <param name="logFile">The log file to which to write messages.</param>
-        /// <param name="colorScheme">The console color scheme to use.</param>
+        /// <param name="colorConfig">The colors to use for text written to the SMAPI console.</param>
         /// <param name="isVerbose">Whether verbose logging is enabled. This enables more detailed diagnostic messages than are normally needed.</param>
-        public Monitor(string source, ConsoleInterceptionManager consoleInterceptor, LogFileManager logFile, MonitorColorScheme colorScheme, bool isVerbose)
+        public Monitor(string source, ConsoleInterceptionManager consoleInterceptor, LogFileManager logFile, ColorSchemeConfig colorConfig, bool isVerbose)
         {
             // validate
             if (string.IsNullOrWhiteSpace(source))
                 throw new ArgumentException("The log source cannot be empty.");
 
-            // initialise
+            // initialize
             this.Source = source;
             this.LogFile = logFile ?? throw new ArgumentNullException(nameof(logFile), "The log file manager cannot be null.");
-            this.ConsoleWriter = new ColorfulConsoleWriter(Constants.Platform, colorScheme);
+            this.ConsoleWriter = new ColorfulConsoleWriter(Constants.Platform, colorConfig);
             this.ConsoleInterceptor = consoleInterceptor;
             this.IsVerbose = isVerbose;
         }

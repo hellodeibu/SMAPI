@@ -40,17 +40,28 @@ argument | purpose
 `--uninstall` | Preselects the uninstall action, skipping the prompt asking what the user wants to do.
 `--game-path "path"` | Specifies the full path to the folder containing the Stardew Valley executable, skipping automatic detection and any prompt to choose a path. If the path is not valid, the installer displays an error.
 
-SMAPI itself recognises two arguments, but these are intended for internal use or testing and may
-change without warning.
+SMAPI itself recognises two arguments **on Windows only**, but these are intended for internal use
+or testing and may change without warning. On Linux/Mac, see _environment variables_ below.
 
 argument | purpose
 -------- | -------
 `--no-terminal` | SMAPI won't write anything to the console window. (Messages will still be written to the log file.)
 `--mods-path` | The path to search for mods, if not the standard `Mods` folder. This can be a path relative to the game folder (like `--mods-path "Mods (test)"`) or an absolute path.
 
+### Environment variables
+The above SMAPI arguments don't work on Linux/Mac due to the way the game launcher works. You can
+set temporary environment variables instead. For example:
+> SMAPI_MODS_PATH="Mods (multiplayer)" /path/to/StardewValley
+
+environment variable | purpose
+-------------------- | -------
+`SMAPI_NO_TERMINAL` | Equivalent to `--no-terminal` above.
+`SMAPI_MODS_PATH` | Equivalent to `--mods-path` above.
+
+
 ### Compile flags
 SMAPI uses a small number of conditional compilation constants, which you can set by editing the
-`<DefineConstants>` element in `StardewModdingAPI.csproj`. Supported constants:
+`<DefineConstants>` element in `SMAPI.csproj`. Supported constants:
 
 flag | purpose
 ---- | -------
@@ -60,28 +71,28 @@ flag | purpose
 ### Compiling from source
 Using an official SMAPI release is recommended for most users.
 
-SMAPI uses some C# 7 code, so you'll need at least
-[Visual Studio 2017](https://www.visualstudio.com/vs/community/) on Windows,
-[MonoDevelop 7.0](https://www.monodevelop.com/) on Linux,
-[Visual Studio 2017 for Mac](https://www.visualstudio.com/vs/visual-studio-mac/), or an equivalent
-IDE to compile it. It uses build configuration derived from the
-[crossplatform mod config](https://github.com/Pathoschild/Stardew.ModBuildConfig#readme) to detect
-your current OS automatically and load the correct references. Compile output will be placed in a
-`bin` folder at the root of the git repository.
+SMAPI often uses the latest C# syntax. You may need the latest version of
+[Visual Studio](https://www.visualstudio.com/vs/community/) on Windows,
+[MonoDevelop](https://www.monodevelop.com/) on Linux,
+[Visual Studio for Mac](https://www.visualstudio.com/vs/visual-studio-mac/), or an equivalent IDE
+to compile it. It uses build configuration derived from the
+[crossplatform mod config](https://smapi.io/package/readme) to detect your current OS automatically
+and load the correct references. Compile output will be placed in a `bin` folder at the root of the
+git repository.
 
 ### Debugging a local build
 Rebuilding the solution in debug mode will copy the SMAPI files into your game folder. Starting
-the `StardewModdingAPI` project with debugging from Visual Studio (on Mac or Windows) will launch
-SMAPI with the debugger attached, so you can intercept errors and step through the code being
-executed. This doesn't work in MonoDevelop on Linux, unfortunately.
+the `SMAPI` project with debugging from Visual Studio (on Mac or Windows) will launch SMAPI with
+the debugger attached, so you can intercept errors and step through the code being executed. This
+doesn't work in MonoDevelop on Linux, unfortunately.
 
 ### Preparing a release
 To prepare a crossplatform SMAPI release, you'll need to compile it on two platforms. See
 [crossplatforming info](https://stardewvalleywiki.com/Modding:Modder_Guide/Test_and_Troubleshoot#Testing_on_all_platforms)
 on the wiki for the first-time setup.
 
-1. Update the version number in `GlobalAssemblyInfo.cs` and `Constants::Version`. Make sure you use a
-   [semantic version](https://semver.org). Recommended format:
+1. Update the version number in `.root/build/common.targets` and `Constants::Version`. Make sure
+  you use a [semantic version](https://semver.org). Recommended format:
 
    build type | format                   | example
    :--------- | :----------------------- | :------

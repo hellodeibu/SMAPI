@@ -1,13 +1,16 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson.Serialization.Options;
 using StardewModdingAPI.Toolkit;
 using StardewModdingAPI.Toolkit.Framework.Clients.Wiki;
 
 namespace StardewModdingAPI.Web.Framework.Caching.Wiki
 {
     /// <summary>The model for cached wiki mods.</summary>
-    public class CachedWikiMod
+    internal class CachedWikiMod
     {
         /*********
         ** Accessors
@@ -39,6 +42,12 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
 
         /// <summary>The mod ID in the Chucklefish mod repo.</summary>
         public int? ChucklefishID { get; set; }
+
+        /// <summary>The mod ID in the CurseForge mod repo.</summary>
+        public int? CurseForgeID { get; set; }
+
+        /// <summary>The mod key in the CurseForge mod repo (used in mod page URLs).</summary>
+        public string CurseForgeKey { get; set; }
 
         /// <summary>The mod ID in the ModDrop mod repo.</summary>
         public int? ModDropID { get; set; }
@@ -103,6 +112,17 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
         /// <summary>The URL to the latest unofficial update, if applicable.</summary>
         public string BetaUnofficialUrl { get; set; }
 
+        /****
+        ** Version maps
+        ****/
+        /// <summary>Maps local versions to a semantic version for update checks.</summary>
+        [BsonDictionaryOptions(Representation = DictionaryRepresentation.ArrayOfArrays)]
+        public IDictionary<string, string> MapLocalVersions { get; set; }
+
+        /// <summary>Maps remote versions to a semantic version for update checks.</summary>
+        [BsonDictionaryOptions(Representation = DictionaryRepresentation.ArrayOfArrays)]
+        public IDictionary<string, string> MapRemoteVersions { get; set; }
+
 
         /*********
         ** Accessors
@@ -123,6 +143,8 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
             this.Author = mod.Author;
             this.NexusID = mod.NexusID;
             this.ChucklefishID = mod.ChucklefishID;
+            this.CurseForgeID = mod.CurseForgeID;
+            this.CurseForgeKey = mod.CurseForgeKey;
             this.ModDropID = mod.ModDropID;
             this.GitHubRepo = mod.GitHubRepo;
             this.CustomSourceUrl = mod.CustomSourceUrl;
@@ -146,6 +168,10 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
             this.BetaBrokeIn = mod.BetaCompatibility?.BrokeIn;
             this.BetaUnofficialVersion = mod.BetaCompatibility?.UnofficialVersion?.ToString();
             this.BetaUnofficialUrl = mod.BetaCompatibility?.UnofficialUrl;
+
+            // version maps
+            this.MapLocalVersions = mod.MapLocalVersions;
+            this.MapRemoteVersions = mod.MapRemoteVersions;
         }
 
         /// <summary>Reconstruct the original model.</summary>
@@ -158,6 +184,8 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
                 Author = this.Author,
                 NexusID = this.NexusID,
                 ChucklefishID = this.ChucklefishID,
+                CurseForgeID = this.CurseForgeID,
+                CurseForgeKey = this.CurseForgeKey,
                 ModDropID = this.ModDropID,
                 GitHubRepo = this.GitHubRepo,
                 CustomSourceUrl = this.CustomSourceUrl,
@@ -176,7 +204,11 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
                     BrokeIn = this.MainBrokeIn,
                     UnofficialVersion = this.MainUnofficialVersion != null ? new SemanticVersion(this.MainUnofficialVersion) : null,
                     UnofficialUrl = this.MainUnofficialUrl
-                }
+                },
+
+                // version maps
+                MapLocalVersions = this.MapLocalVersions,
+                MapRemoteVersions = this.MapRemoteVersions
             };
 
             // beta compatibility

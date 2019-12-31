@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Harmony;
 using StardewModdingAPI.Enums;
 using StardewModdingAPI.Framework.Patching;
@@ -10,7 +11,9 @@ using StardewValley.Minigames;
 namespace StardewModdingAPI.Patches
 {
     /// <summary>Harmony patches which notify SMAPI for save creation load stages.</summary>
-    /// <remarks>This patch hooks into <see cref="Game1.loadForNewGame"/>, checks if <c>TitleMenu.transitioningCharacterCreationMenu</c> is true (which means the player is creating a new save file), then raises <see cref="LoadStage.CreatedBasicInfo"/> after the location list is cleared twice (the second clear happens right before locations are created), and <see cref="LoadStage.CreatedLocations"/> when the method ends.</remarks>
+    /// <remarks>Patch methods must be static for Harmony to work correctly. See the Harmony documentation before renaming patch arguments.</remarks>
+    [SuppressMessage("ReSharper", "InconsistentNaming", Justification = "Argument names are defined by Harmony and methods are named for clarity.")]
+    [SuppressMessage("ReSharper", "IdentifierTypo", Justification = "Argument names are defined by Harmony and methods are named for clarity.")]
     internal class LoadContextPatch : IHarmonyPatch
     {
         /*********
@@ -27,7 +30,7 @@ namespace StardewModdingAPI.Patches
         ** Accessors
         *********/
         /// <summary>A unique name for this patch.</summary>
-        public string Name => $"{nameof(LoadContextPatch)}";
+        public string Name => nameof(LoadContextPatch);
 
 
         /*********

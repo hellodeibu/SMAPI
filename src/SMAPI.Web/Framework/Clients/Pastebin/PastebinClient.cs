@@ -1,7 +1,5 @@
 using System;
-using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
 using Pathoschild.Http.Client;
 
@@ -16,12 +14,6 @@ namespace StardewModdingAPI.Web.Framework.Clients.Pastebin
         /// <summary>The underlying HTTP client.</summary>
         private readonly IClient Client;
 
-        /// <summary>The user key used to authenticate with the Pastebin API.</summary>
-        private readonly string UserKey;
-
-        /// <summary>The developer key used to authenticate with the Pastebin API.</summary>
-        private readonly string DevKey;
-
 
         /*********
         ** Public methods
@@ -29,13 +21,9 @@ namespace StardewModdingAPI.Web.Framework.Clients.Pastebin
         /// <summary>Construct an instance.</summary>
         /// <param name="baseUrl">The base URL for the Pastebin API.</param>
         /// <param name="userAgent">The user agent for the API client.</param>
-        /// <param name="userKey">The user key used to authenticate with the Pastebin API.</param>
-        /// <param name="devKey">The developer key used to authenticate with the Pastebin API.</param>
-        public PastebinClient(string baseUrl, string userAgent, string userKey, string devKey)
+        public PastebinClient(string baseUrl, string userAgent)
         {
             this.Client = new FluentClient(baseUrl).SetUserAgent(userAgent);
-            this.UserKey = userKey;
-            this.DevKey = devKey;
         }
 
         /// <summary>Fetch a saved paste.</summary>
@@ -62,50 +50,7 @@ namespace StardewModdingAPI.Web.Framework.Clients.Pastebin
             }
             catch (Exception ex)
             {
-                return new PasteInfo { Error = ex.ToString() };
-            }
-        }
-
-        /// <summary>Save a paste to Pastebin.</summary>
-        /// <param name="content">The paste content.</param>
-        public async Task<SavePasteResult> PostAsync(string content)
-        {
-            try
-            {
-                // validate
-                if (string.IsNullOrWhiteSpace(content))
-                    return new SavePasteResult { Error = "The log content can't be empty." };
-
-                // post to API
-                string response = await this.Client
-                    .PostAsync("api/api_post.php")
-                    .WithBody(p => p.FormUrlEncoded(new
-                    {
-                        api_option = "paste",
-                        api_user_key = this.UserKey,
-                        api_dev_key = this.DevKey,
-                        api_paste_private = 1, // unlisted
-                        api_paste_name = $"SMAPI log {DateTime.UtcNow:s}",
-                        api_paste_expire_date = "N", // never expire
-                        api_paste_code = content
-                    }))
-                    .AsString();
-
-                // handle Pastebin errors
-                if (string.IsNullOrWhiteSpace(response))
-                    return new SavePasteResult { Error = "Received an empty response from Pastebin." };
-                if (response.StartsWith("Bad API request"))
-                    return new SavePasteResult { Error = response };
-                if (!response.Contains("/"))
-                    return new SavePasteResult { Error = $"Received an unknown response: {response}" };
-
-                // return paste ID
-                string pastebinID = response.Split("/").Last();
-                return new SavePasteResult { Success = true, ID = pastebinID };
-            }
-            catch (Exception ex)
-            {
-                return new SavePasteResult { Success = false, Error = ex.ToString() };
+                return new PasteInfo { Error = $"Pastebin error: {ex}" };
             }
         }
 

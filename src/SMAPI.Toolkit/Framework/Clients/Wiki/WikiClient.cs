@@ -93,6 +93,8 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
                 string[] warnings = this.GetAttributeAsCsv(node, "data-warnings");
                 int? nexusID = this.GetAttributeAsNullableInt(node, "data-nexus-id");
                 int? chucklefishID = this.GetAttributeAsNullableInt(node, "data-cf-id");
+                int? curseForgeID = this.GetAttributeAsNullableInt(node, "data-curseforge-id");
+                string curseForgeKey = this.GetAttribute(node, "data-curseforge-key");
                 int? modDropID = this.GetAttributeAsNullableInt(node, "data-moddrop-id");
                 string githubRepo = this.GetAttribute(node, "data-github");
                 string customSourceUrl = this.GetAttribute(node, "data-custom-source");
@@ -100,6 +102,8 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
                 string anchor = this.GetAttribute(node, "id");
                 string contentPackFor = this.GetAttribute(node, "data-content-pack-for");
                 string devNote = this.GetAttribute(node, "data-dev-note");
+                IDictionary<string, string> mapLocalVersions = this.GetAttributeAsVersionMapping(node, "data-map-local-versions");
+                IDictionary<string, string> mapRemoteVersions = this.GetAttributeAsVersionMapping(node, "data-map-remote-versions");
 
                 // parse stable compatibility
                 WikiCompatibilityInfo compatibility = new WikiCompatibilityInfo
@@ -145,6 +149,8 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
                     Author = authors,
                     NexusID = nexusID,
                     ChucklefishID = chucklefishID,
+                    CurseForgeID = curseForgeID,
+                    CurseForgeKey = curseForgeKey,
                     ModDropID = modDropID,
                     GitHubRepo = githubRepo,
                     CustomSourceUrl = customSourceUrl,
@@ -155,6 +161,8 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
                     Warnings = warnings,
                     MetadataLinks = metadataLinks.ToArray(),
                     DevNote = devNote,
+                    MapLocalVersions = mapLocalVersions,
+                    MapRemoteVersions = mapRemoteVersions,
                     Anchor = anchor
                 };
             }
@@ -217,6 +225,28 @@ namespace StardewModdingAPI.Toolkit.Framework.Clients.Wiki
             if (raw != null && int.TryParse(raw, out int value))
                 return value;
             return null;
+        }
+
+        /// <summary>Get an attribute value and parse it as a version mapping.</summary>
+        /// <param name="element">The element whose attributes to read.</param>
+        /// <param name="name">The attribute name.</param>
+        private IDictionary<string, string> GetAttributeAsVersionMapping(HtmlNode element, string name)
+        {
+            // get raw value
+            string raw = this.GetAttribute(element, name);
+            if (raw?.Contains("→") != true)
+                return null;
+
+            // parse
+            // Specified on the wiki in the form "remote version → mapped version; another remote version → mapped version"
+            IDictionary<string, string> map = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+            foreach (string pair in raw.Split(';'))
+            {
+                string[] versions = pair.Split('→');
+                if (versions.Length == 2 && !string.IsNullOrWhiteSpace(versions[0]) && !string.IsNullOrWhiteSpace(versions[1]))
+                    map[versions[0].Trim()] = versions[1].Trim();
+            }
+            return map;
         }
 
         /// <summary>Get the text of an element with the given class name.</summary>

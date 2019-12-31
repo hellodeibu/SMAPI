@@ -100,15 +100,20 @@ namespace StardewModdingAPI.Web.ViewModels
                 anyFound = true;
                 yield return new ModLinkModel($"https://www.nexusmods.com/stardewvalley/mods/{entry.NexusID}", "Nexus");
             }
-            if (entry.ChucklefishID.HasValue)
-            {
-                anyFound = true;
-                yield return new ModLinkModel($"https://community.playstarbound.com/resources/{entry.ChucklefishID}", "Chucklefish");
-            }
             if (entry.ModDropID.HasValue)
             {
                 anyFound = true;
                 yield return new ModLinkModel($"https://www.moddrop.com/sdv/mod/{entry.ModDropID}", "ModDrop");
+            }
+            if (!string.IsNullOrWhiteSpace(entry.CurseForgeKey))
+            {
+                anyFound = true;
+                yield return new ModLinkModel($"https://www.curseforge.com/stardewvalley/mods/{entry.CurseForgeKey}", "CurseForge");
+            }
+            if (entry.ChucklefishID.HasValue)
+            {
+                anyFound = true;
+                yield return new ModLinkModel($"https://community.playstarbound.com/resources/{entry.ChucklefishID}", "Chucklefish");
             }
 
             // fallback

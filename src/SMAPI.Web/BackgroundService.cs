@@ -5,12 +5,13 @@ using Hangfire;
 using Microsoft.Extensions.Hosting;
 using StardewModdingAPI.Toolkit;
 using StardewModdingAPI.Toolkit.Framework.Clients.Wiki;
+using StardewModdingAPI.Web.Framework.Caching.Mods;
 using StardewModdingAPI.Web.Framework.Caching.Wiki;
 
 namespace StardewModdingAPI.Web
 {
     /// <summary>A hosted service which runs background data updates.</summary>
-    /// <remarks>Task methods need to be static, since otherwise Hangfire will try to serialise the entire instance.</remarks>
+    /// <remarks>Task methods need to be static, since otherwise Hangfire will try to serialize the entire instance.</remarks>
     internal class BackgroundService : IHostedService, IDisposable
     {
         /*********
@@ -19,8 +20,11 @@ namespace StardewModdingAPI.Web
         /// <summary>The background task server.</summary>
         private static BackgroundJobServer JobServer;
 
-        /// <summary>The cache in which to store mod metadata.</summary>
+        /// <summary>The cache in which to store wiki metadata.</summary>
         private static IWikiCacheRepository WikiCache;
+
+        /// <summary>The cache in which to store mod data.</summary>
+        private static IModCacheRepository ModCache;
 
 
         /*********
@@ -30,10 +34,12 @@ namespace StardewModdingAPI.Web
         ** Hosted service
         ****/
         /// <summary>Construct an instance.</summary>
-        /// <param name="wikiCache">The cache in which to store mod metadata.</param>
-        public BackgroundService(IWikiCacheRepository wikiCache)
+        /// <param name="wikiCache">The cache in which to store wiki metadata.</param>
+        /// <param name="modCache">The cache in which to store mod data.</param>
+        public BackgroundService(IWikiCacheRepository wikiCache, IModCacheRepository modCache)
         {
             BackgroundService.WikiCache = wikiCache;
+            BackgroundService.ModCache = modCache;
         }
 
         /// <summary>Start the service.</summary>
@@ -44,9 +50,11 @@ namespace StardewModdingAPI.Web
 
             // set startup tasks
             BackgroundJob.Enqueue(() => BackgroundService.UpdateWikiAsync());
+            BackgroundJob.Enqueue(() => BackgroundService.RemoveStaleModsAsync());
 
             // set recurring tasks
-            RecurringJob.AddOrUpdate(() => BackgroundService.UpdateWikiAsync(), "*/10 * * * *");
+            RecurringJob.AddOrUpdate(() => BackgroundService.UpdateWikiAsync(), "*/10 * * * *"); // every 10 minutes
+            RecurringJob.AddOrUpdate(() => BackgroundService.RemoveStaleModsAsync(), "0 * * * *"); // hourly
 
             return Task.CompletedTask;
         }
@@ -69,18 +77,26 @@ namespace StardewModdingAPI.Web
         ** Tasks
         ****/
         /// <summary>Update the cached wiki metadata.</summary>
+        [AutomaticRetry(Attempts = 3, DelaysInSeconds = new[] { 30, 60, 120 })]
         public static async Task UpdateWikiAsync()
         {
             WikiModList wikiCompatList = await new ModToolkit().GetWikiCompatibilityListAsync();
             BackgroundService.WikiCache.SaveWikiData(wikiCompatList.StableVersion, wikiCompatList.BetaVersion, wikiCompatList.Mods, out _, out _);
         }
 
+        /// <summary>Remove mods which haven't been requested in over 48 hours.</summary>
+        public static Task RemoveStaleModsAsync()
+        {
+            BackgroundService.ModCache.RemoveStaleMods(TimeSpan.FromHours(48));
+            return Task.CompletedTask;
+        }
+
 
         /*********
         ** Private method
         *********/
-        /// <summary>Initialise the background service if it's not already initialised.</summary>
-        /// <exception cref="InvalidOperationException">The background service is already initialised.</exception>
+        /// <summary>Initialize the background service if it's not already initialized.</summary>
+        /// <exception cref="InvalidOperationException">The background service is already initialized.</exception>
         private void TryInit()
         {
             if (BackgroundService.JobServer != null)

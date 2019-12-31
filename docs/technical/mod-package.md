@@ -40,7 +40,7 @@ property | description
 `$(GamePath)` | The absolute path to the detected game folder.
 `$(GameExecutableName)` | The game's executable name for the current OS (`Stardew Valley` on Windows, or `StardewValley` on Linux/Mac).
 
-If you get a build error saying it can't find your game, see [_set the game path_](#set-the-game-path).
+If you get a build error saying it can't find your game, see [_custom game path_](#custom-game-path).
 
 ### Add assembly references
 The package adds assembly references to SMAPI, Stardew Valley, xTile, and MonoGame (Linux/Mac) or XNA
@@ -130,11 +130,8 @@ To disable game debugging (only needed for some non-mod projects):
 ```
 
 ### Preconfigure common settings
-The package automatically enables PDB files, so error logs show line numbers for simpler debugging.
-
-For projects using the simplified `.csproj` format, it also enables the GAC (to support XNA
-Framework) and sets the build to x86 mode (to avoid 'mismatch between the processor architecture' warnings due to
-  the game being x86).
+The package also automatically enables PDB files (so error logs show line numbers for simpler
+debugging), and enables support for the simplified `.csproj` format.
 
 ### Add code warnings
 The package runs code analysis on your mod and raises warnings for some common errors or pitfalls.
@@ -231,7 +228,7 @@ or you have multiple installs, you can specify the path yourself. There's two wa
      </Project>
      ```
 
-  4. Replace `PATH_HERE` with your game path.
+  4. Replace `PATH_HERE` with your game's folder path.
 
 * **Option 2: path in the project file.**  
   _You'll need to do this for each project that uses the package._
@@ -294,9 +291,7 @@ which can be uploaded to NuGet or referenced directly.
 * Updated for SMAPI 3.0 and Stardew Valley 1.4.
 * Added automatic support for `assets` folders.
 * Added `$(GameExecutableName)` MSBuild variable.
-* Added support for projects using the simplified `.csproj` format:
-  * platform target is now set to x86 automatically to avoid mismatching platform target warnings;
-  * added GAC to assembly search paths to fix references to XNA Framework.
+* Added support for projects using the simplified `.csproj` format.
 * Added option to disable game debugging config.
 * Added `.pdb` files to builds by default (to enable line numbers in error stack traces).
 * Added optional Harmony reference.

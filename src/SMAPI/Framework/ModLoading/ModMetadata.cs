@@ -188,6 +188,27 @@ namespace StardewModdingAPI.Framework.ModLoading
             }
         }
 
+        /// <summary>Get the mod IDs that must be installed to load this mod.</summary>
+        /// <param name="includeOptional">Whether to include optional dependencies.</param>
+        public IEnumerable<string> GetRequiredModIds(bool includeOptional = false)
+        {
+            HashSet<string> required = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
+
+            // yield dependencies
+            if (this.Manifest?.Dependencies != null)
+            {
+                foreach (var entry in this.Manifest?.Dependencies)
+                {
+                    if ((entry.IsRequired || includeOptional) && required.Add(entry.UniqueID))
+                        yield return entry.UniqueID;
+                }
+            }
+
+            // yield content pack parent
+            if (this.Manifest?.ContentPackFor?.UniqueID != null && required.Add(this.Manifest.ContentPackFor.UniqueID))
+                yield return this.Manifest.ContentPackFor.UniqueID;
+        }
+
         /// <summary>Whether the mod has at least one valid update key set.</summary>
         public bool HasValidUpdateKeys()
         {
