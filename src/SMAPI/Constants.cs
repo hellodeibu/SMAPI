@@ -19,6 +19,9 @@ namespace StardewModdingAPI
         /****
         ** Public
         ****/
+        /// <summary>The specific name to reference to SMAPI as.</summary>
+        public static string Name { get; } = "SMAPI-archie";
+
         /// <summary>SMAPI's current semantic version.</summary>
         public static ISemanticVersion ApiVersion { get; } = new Toolkit.SemanticVersion("3.0.1");
 
@@ -55,6 +58,9 @@ namespace StardewModdingAPI
         /// <summary>The URL of the SMAPI home page.</summary>
         internal const string HomePageUrl = "https://smapi.io";
 
+        /// <summary>The URL of the SMAPI log submission page.</summary>
+        internal const string LogUrl = "https://smapi.io/log";
+
         /// <summary>The absolute path to the folder containing SMAPI's internal files.</summary>
         internal static readonly string InternalFilesPath = Program.DllSearchPath;
 
@@ -65,7 +71,7 @@ namespace StardewModdingAPI
         internal static string ApiMetadataPath => Path.Combine(Constants.InternalFilesPath, "metadata.json");
 
         /// <summary>The filename prefix used for all SMAPI logs.</summary>
-        internal static string LogNamePrefix { get; } = "SMAPI-";
+        internal static string LogNamePrefix { get; } = $"{Constants.Name}-";
 
         /// <summary>The filename for SMAPI's main log, excluding the <see cref="LogExtension"/>.</summary>
         internal static string LogFilename { get; } = $"{Constants.LogNamePrefix}latest";
@@ -74,7 +80,7 @@ namespace StardewModdingAPI
         internal static string LogExtension { get; } = "txt";
 
         /// <summary>The file path for the log containing the previous fatal crash, if any.</summary>
-        internal static string FatalCrashLog => Path.Combine(Constants.LogDir, "SMAPI-crash.txt");
+        internal static string FatalCrashLog => Path.Combine(Constants.LogDir, $"{Constants.Name}-crash.txt");
 
         /// <summary>The file path which stores a fatal crash message for the next run.</summary>
         internal static string FatalCrashMarker => Path.Combine(Constants.InternalFilesPath, "StardewModdingAPI.crash.marker");

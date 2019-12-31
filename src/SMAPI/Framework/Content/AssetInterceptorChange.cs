@@ -45,7 +45,7 @@ namespace StardewModdingAPI.Framework.Content
         {
             MethodInfo canIntercept = this.GetType().GetMethod(nameof(this.CanInterceptImpl), BindingFlags.Instance | BindingFlags.NonPublic);
             if (canIntercept == null)
-                throw new InvalidOperationException($"SMAPI couldn't access the {nameof(AssetInterceptorChange)}.{nameof(this.CanInterceptImpl)} implementation.");
+                throw new InvalidOperationException($"{Constants.Name} couldn't access the {nameof(AssetInterceptorChange)}.{nameof(this.CanInterceptImpl)} implementation.");
 
             return (bool)canIntercept.MakeGenericMethod(asset.DataType).Invoke(this, new object[] { asset });
         }

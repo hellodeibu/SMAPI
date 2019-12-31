@@ -42,6 +42,9 @@ namespace StardewModdingAPI.Framework
         /// <summary>Whether to write anything to the console. This should be disabled if no console is available.</summary>
         internal bool WriteToConsole { get; set; } = true;
 
+        /// <summary>Whether to enable SMAPI's interactive console mode. This should be disabled if no console is available.</summary>
+        internal bool InteractiveConsole { get; set; } = true;
+
 
         /*********
         ** Public methods

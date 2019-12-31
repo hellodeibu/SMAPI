@@ -140,7 +140,8 @@ namespace StardewModdingAPI.Framework
         /// <summary>Construct an instance.</summary>
         /// <param name="modsPath">The path to search for mods.</param>
         /// <param name="writeToConsole">Whether to output log messages to the console.</param>
-        public SCore(string modsPath, bool writeToConsole)
+        /// <param name="interactiveConsole">Whether to enable interactive console mode.</param>
+        public SCore(string modsPath, bool writeToConsole, bool interactiveConsole = true)
         {
             // init paths
             this.VerifyPath(modsPath);
@@ -154,9 +155,10 @@ namespace StardewModdingAPI.Framework
             // init basics
             this.Settings = JsonConvert.DeserializeObject<SConfig>(File.ReadAllText(Constants.ApiConfigPath));
             this.LogFile = new LogFileManager(logPath);
-            this.Monitor = new Monitor("SMAPI", this.ConsoleManager, this.LogFile, this.Settings.ConsoleColors, this.Settings.VerboseLogging)
+            this.Monitor = new Monitor(Constants.Name, this.ConsoleManager, this.LogFile, this.Settings.ConsoleColors, this.Settings.VerboseLogging)
             {
                 WriteToConsole = writeToConsole,
+                InteractiveConsole = interactiveConsole,
                 ShowTraceInConsole = this.Settings.DeveloperMode,
                 ShowFullStampInConsole = this.Settings.DeveloperMode
             };
@@ -169,7 +171,7 @@ namespace StardewModdingAPI.Framework
                 this.ConsoleManager.OnMessageIntercepted += message => this.HandleConsoleMessage(this.MonitorForGame, message);
 
             // init logging
-            this.Monitor.Log($"SMAPI {Constants.ApiVersion} with Stardew Valley {Constants.GameVersion} on {EnvironmentUtility.GetFriendlyPlatformName(Constants.Platform)}", LogLevel.Info);
+            this.Monitor.Log($"{Constants.Name} {Constants.ApiVersion} with Stardew Valley {Constants.GameVersion} on {EnvironmentUtility.GetFriendlyPlatformName(Constants.Platform)}", LogLevel.Info);
             this.Monitor.Log($"Mods go here: {modsPath}", LogLevel.Info);
             if (modsPath != Constants.DefaultModsPath)
                 this.Monitor.Log("(Using custom --mods-path argument.)", LogLevel.Trace);
@@ -193,7 +195,7 @@ namespace StardewModdingAPI.Framework
 #else
             if (Constants.Platform == Platform.Windows)
             {
-                this.Monitor.Log("Oops! You're running {Constants.Platform}, but this version of SMAPI is for Windows. Please reinstall SMAPI to fix this.", LogLevel.Error);
+                this.Monitor.Log($"Oops! You're running {Constants.Platform}, but this version of {Constants.Name} is for Windows. Please reinstall {Constants.Name} to fix this.", LogLevel.Error);
                 this.PressAnyKeyToExit();
                 return;
             }
@@ -269,7 +271,7 @@ namespace StardewModdingAPI.Framework
                         }
                         catch (Exception ex)
                         {
-                            this.Monitor.Log($"SMAPI failed trying to track the crash details: {ex.GetLogSummary()}", LogLevel.Error);
+                            this.Monitor.Log($"{Constants.Name} failed trying to track the crash details: {ex.GetLogSummary()}", LogLevel.Error);
                         }
 
                         this.GameInstance.Exit();
@@ -277,12 +279,12 @@ namespace StardewModdingAPI.Framework
                 }).Start();
 
                 // set window titles
-                this.GameInstance.Window.Title = $"Stardew Valley {Constants.GameVersion} - running SMAPI {Constants.ApiVersion}";
-                Console.Title = $"SMAPI {Constants.ApiVersion} - running Stardew Valley {Constants.GameVersion}";
+                this.GameInstance.Window.Title = $"Stardew Valley {Constants.GameVersion} - running {Constants.Name} {Constants.ApiVersion}";
+                Console.Title = $"{Constants.Name} {Constants.ApiVersion} - running Stardew Valley {Constants.GameVersion}";
             }
             catch (Exception ex)
             {
-                this.Monitor.Log($"SMAPI failed to initialize: {ex.GetLogSummary()}", LogLevel.Error);
+                this.Monitor.Log($"{Constants.Name} failed to initialize: {ex.GetLogSummary()}", LogLevel.Error);
                 this.PressAnyKeyToExit();
                 return;
             }
@@ -295,10 +297,14 @@ namespace StardewModdingAPI.Framework
                 {
                     if (Constants.ApiVersion.IsPrerelease() && updateFound.IsNewerThan(Constants.ApiVersion))
                     {
-                        this.Monitor.Log("A new version of SMAPI was detected last time you played.", LogLevel.Error);
-                        this.Monitor.Log($"You can update to {updateFound}: https://smapi.io.", LogLevel.Error);
-                        this.Monitor.Log("Press any key to continue playing anyway. (This only appears when using a SMAPI beta.)", LogLevel.Info);
-                        Console.ReadKey();
+                        this.Monitor.Log($"A new version of {Constants.Name} was detected last time you played.", LogLevel.Error);
+                        this.Monitor.Log($"You can update to {updateFound}: ${Constants.HomePageUrl}.", LogLevel.Error);
+
+                        if (this.Monitor.InteractiveConsole)
+                        {
+                            this.Monitor.Log($"Press any key to continue playing anyway. (This only appears when using a {Constants.Name} beta.)", LogLevel.Info);
+                            Console.ReadKey();
+                        }
                     }
                 }
                 File.Delete(Constants.UpdateMarker);
@@ -308,25 +314,32 @@ namespace StardewModdingAPI.Framework
             if (File.Exists(Constants.FatalCrashMarker))
             {
                 this.Monitor.Log("The game crashed last time you played. That can be due to bugs in the game, but if it happens repeatedly you can ask for help here: https://community.playstarbound.com/threads/108375/.", LogLevel.Error);
-                this.Monitor.Log("If you ask for help, make sure to share your SMAPI log: https://smapi.io/log.", LogLevel.Error);
-                this.Monitor.Log("Press any key to delete the crash data and continue playing.", LogLevel.Info);
-                Console.ReadKey();
+                this.Monitor.Log($"If you ask for help, make sure to share your SMAPI log: {Constants.LogUrl}.", LogLevel.Error);
+
+                if (this.Monitor.InteractiveConsole)
+                {
+                    this.Monitor.Log("Press any key to delete the crash data and continue playing.", LogLevel.Info);
+                    Console.ReadKey();
+                }
+
                 File.Delete(Constants.FatalCrashLog);
                 File.Delete(Constants.FatalCrashMarker);
             }
 
             // add headers
             if (this.Settings.DeveloperMode)
-                this.Monitor.Log($"You have SMAPI for developers, so the console will be much more verbose. You can disable developer mode by installing the non-developer version of SMAPI, or by editing {Constants.ApiConfigPath}.", LogLevel.Info);
+                this.Monitor.Log($"You have {Constants.Name} for developers, so the console will be much more verbose. You can disable developer mode by installing the non-developer version of {Constants.Name}, or by editing {Constants.ApiConfigPath}.", LogLevel.Info);
             if (!this.Settings.CheckForUpdates)
-                this.Monitor.Log($"You configured SMAPI to not check for updates. Running an old version of SMAPI is not recommended. You can enable update checks by reinstalling SMAPI or editing {Constants.ApiConfigPath}.", LogLevel.Warn);
+                this.Monitor.Log($"You configured {Constants.Name} to not check for updates. Running an old version of {Constants.Name} is not recommended. You can enable update checks by reinstalling {Constants.Name} or editing {Constants.ApiConfigPath}.", LogLevel.Warn);
             if (!this.Monitor.WriteToConsole)
                 this.Monitor.Log("Writing to the terminal is disabled because the --no-terminal argument was received. This usually means launching the terminal failed.", LogLevel.Warn);
+            if (!this.Monitor.InteractiveConsole)
+                this.Monitor.Log("Sending commands via terminal is disabled because the --no-interactive argument was used.", LogLevel.Info);
             this.Monitor.VerboseLog("Verbose logging enabled.");
 
             // update window titles
-            this.GameInstance.Window.Title = $"Stardew Valley {Constants.GameVersion} - running SMAPI {Constants.ApiVersion}";
-            Console.Title = $"SMAPI {Constants.ApiVersion} - running Stardew Valley {Constants.GameVersion}";
+            this.GameInstance.Window.Title = $"Stardew Valley {Constants.GameVersion} - running {Constants.Name} {Constants.ApiVersion}";
+            Console.Title = $"{Constants.Name} {Constants.ApiVersion} - running Stardew Valley {Constants.GameVersion}";
 
             // start game
             this.Monitor.Log("Starting game...", LogLevel.Debug);
@@ -402,7 +415,7 @@ namespace StardewModdingAPI.Framework
         {
             if (this.CancellationToken.IsCancellationRequested)
             {
-                this.Monitor.Log("SMAPI shutting down: aborting initialization.", LogLevel.Warn);
+                this.Monitor.Log($"{Constants.Name} shutting down: aborting initialization.", LogLevel.Warn);
                 return;
             }
 
@@ -455,8 +468,8 @@ namespace StardewModdingAPI.Framework
 
             // update window titles
             int modsLoaded = this.ModRegistry.GetAll().Count();
-            this.GameInstance.Window.Title = $"Stardew Valley {Constants.GameVersion} - running SMAPI {Constants.ApiVersion} with {modsLoaded} mods";
-            Console.Title = $"SMAPI {Constants.ApiVersion} - running Stardew Valley {Constants.GameVersion} with {modsLoaded} mods";
+            this.GameInstance.Window.Title = $"Stardew Valley {Constants.GameVersion} - running {Constants.Name} {Constants.ApiVersion} with {modsLoaded} mods";
+            Console.Title = $"{Constants.Name} {Constants.ApiVersion} - running Stardew Valley {Constants.GameVersion} with {modsLoaded} mods";
         }
 
         /// <summary>Initialize SMAPI and mods after the game starts.</summary>
@@ -464,10 +477,11 @@ namespace StardewModdingAPI.Framework
         {
             // validate XNB integrity
             if (!this.ValidateContentIntegrity())
-                this.Monitor.Log("SMAPI found problems in your game's content files which are likely to cause errors or crashes. Consider uninstalling XNB mods or reinstalling the game.", LogLevel.Error);
+                this.Monitor.Log($"{Constants.Name} found problems in your game's content files which are likely to cause errors or crashes. Consider uninstalling XNB mods or reinstalling the game.", LogLevel.Error);
 
             // start SMAPI console
-            new Thread(this.RunConsoleLoop).Start();
+            if (this.Monitor.InteractiveConsole)
+                new Thread(this.RunConsoleLoop).Start();
         }
 
         /// <summary>Handle the game changing locale.</summary>
@@ -1358,7 +1372,8 @@ namespace StardewModdingAPI.Framework
             if (showMessage)
                 Console.WriteLine("Game has ended. Press any key to exit.");
             Thread.Sleep(100);
-            Console.ReadKey();
+            if (this.Monitor.InteractiveConsole)
+                Console.ReadKey();
             Environment.Exit(0);
         }
 
@@ -1369,6 +1384,7 @@ namespace StardewModdingAPI.Framework
             return new Monitor(name, this.ConsoleManager, this.LogFile, this.Settings.ConsoleColors, this.Settings.VerboseLogging)
             {
                 WriteToConsole = this.Monitor.WriteToConsole,
+                InteractiveConsole = this.Monitor.InteractiveConsole,
                 ShowTraceInConsole = this.Settings.DeveloperMode,
                 ShowFullStampInConsole = this.Settings.DeveloperMode
             };

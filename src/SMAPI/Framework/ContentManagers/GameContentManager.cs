@@ -299,7 +299,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
             if (loaders.Length > 1)
             {
                 string[] loaderNames = loaders.Select(p => p.Key.DisplayName).ToArray();
-                this.Monitor.Log($"Multiple mods want to provide the '{info.AssetName}' asset ({string.Join(", ", loaderNames)}), but an asset can't be loaded multiple times. SMAPI will use the default asset instead; uninstall one of the mods to fix this. (Message for modders: you should usually use {typeof(IAssetEditor)} instead to avoid conflicts.)", LogLevel.Warn);
+                this.Monitor.Log($"Multiple mods want to provide the '{info.AssetName}' asset ({string.Join(", ", loaderNames)}), but an asset can't be loaded multiple times. {Constants.Name} will use the default asset instead; uninstall one of the mods to fix this. (Message for modders: you should usually use {typeof(IAssetEditor)} instead to avoid conflicts.)", LogLevel.Warn);
                 return null;
             }
 
@@ -314,7 +314,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
             }
             catch (Exception ex)
             {
-                mod.LogAsMod($"Mod crashed when loading asset '{info.AssetName}'. SMAPI will use the default asset instead. Error details:\n{ex.GetLogSummary()}", LogLevel.Error);
+                mod.LogAsMod($"Mod crashed when loading asset '{info.AssetName}'. {Constants.Name} will use the default asset instead. Error details:\n{ex.GetLogSummary()}", LogLevel.Error);
                 return null;
             }
 
