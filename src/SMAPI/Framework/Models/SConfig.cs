@@ -25,8 +25,7 @@ namespace StardewModdingAPI.Framework.Models
             [nameof(GitHubProjectName)] = "Pathoschild/SMAPI",
             [nameof(WebApiBaseUrl)] = "https://smapi.io/api/",
             [nameof(VerboseLogging)] = false,
-            [nameof(LogNetworkTraffic)] = false,
-            [nameof(DumpMetadata)] = false
+            [nameof(LogNetworkTraffic)] = false
         };
 
         /// <summary>The default values for <see cref="SuppressUpdateChecks"/>, to log changes if different.</summary>
@@ -63,9 +62,6 @@ namespace StardewModdingAPI.Framework.Models
 
         /// <summary>Whether SMAPI should log network traffic. Best combined with <see cref="VerboseLogging"/>, which includes network metadata.</summary>
         public bool LogNetworkTraffic { get; set; }
-
-        /// <summary>Whether to generate a file in the mods folder with detailed metadata about the detected mods.</summary>
-        public bool DumpMetadata { get; set; }
 
         /// <summary>The colors to use for text written to the SMAPI console.</summary>
         public ColorSchemeConfig ConsoleColors { get; set; }

@@ -8,6 +8,13 @@ namespace StardewModdingAPI.Toolkit.Serialization.Converters
     internal class SemanticVersionConverter : JsonConverter
     {
         /*********
+        ** Fields
+        *********/
+        /// <summary>Whether to allow non-standard extensions to semantic versioning.</summary>
+        protected bool AllowNonStandard { get; set; }
+
+
+        /*********
         ** Accessors
         *********/
         /// <summary>Get whether this converter can read JSON.</summary>
@@ -68,7 +75,7 @@ namespace StardewModdingAPI.Toolkit.Serialization.Converters
             int patch = obj.ValueIgnoreCase<int>(nameof(ISemanticVersion.PatchVersion));
             string prereleaseTag = obj.ValueIgnoreCase<string>(nameof(ISemanticVersion.PrereleaseTag));
 
-            return new SemanticVersion(major, minor, patch, prereleaseTag);
+            return new SemanticVersion(major, minor, patch, prereleaseTag: prereleaseTag);
         }
 
         /// <summary>Read a JSON string.</summary>
@@ -78,7 +85,7 @@ namespace StardewModdingAPI.Toolkit.Serialization.Converters
         {
             if (string.IsNullOrWhiteSpace(str))
                 return null;
-            if (!SemanticVersion.TryParse(str, out ISemanticVersion version))
+            if (!SemanticVersion.TryParse(str, allowNonStandard: this.AllowNonStandard, out ISemanticVersion version))
                 throw new SParseException($"Can't parse semantic version from invalid value '{str}', should be formatted like 1.2, 1.2.30, or 1.2.30-beta (path: {path}).");
             return version;
         }

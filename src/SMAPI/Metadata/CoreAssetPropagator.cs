@@ -5,6 +5,7 @@ using System.Linq;
 using Microsoft.Xna.Framework.Graphics;
 using Netcode;
 using StardewModdingAPI.Framework.Reflection;
+using StardewModdingAPI.Toolkit.Utilities;
 using StardewValley;
 using StardewValley.BellsAndWhistles;
 using StardewValley.Buildings;
@@ -190,17 +191,9 @@ namespace StardewModdingAPI.Metadata
 
                 case "characters\\farmer\\farmer_base": // Farmer
                 case "characters\\farmer\\farmer_base_bald":
-                    if (Game1.player == null || !Game1.player.IsMale)
-                        return false;
-                    Game1.player.FarmerRenderer = new FarmerRenderer(key, Game1.player);
-                    return true;
-
-                case "characters\\farmer\\farmer_girl_base": // Farmer
+                case "characters\\farmer\\farmer_girl_base":
                 case "characters\\farmer\\farmer_girl_base_bald":
-                    if (Game1.player == null || Game1.player.IsMale)
-                        return false;
-                    Game1.player.FarmerRenderer = new FarmerRenderer(key, Game1.player);
-                    return true;
+                    return this.ReloadPlayerSprites(key);
 
                 case "characters\\farmer\\hairstyles": // Game1.LoadContent
                     FarmerRenderer.hairStylesTexture = content.Load<Texture2D>(key);
@@ -835,6 +828,27 @@ namespace StardewModdingAPI.Metadata
             }
         }
 
+        /// <summary>Reload the sprites for matching players.</summary>
+        /// <param name="key">The asset key to reload.</param>
+        private bool ReloadPlayerSprites(string key)
+        {
+            Farmer[] players =
+                (
+                    from player in Game1.getOnlineFarmers()
+                    where key == this.NormalizeAssetNameIgnoringEmpty(player.getTexture())
+                    select player
+                )
+                .ToArray();
+
+            foreach (Farmer player in players)
+            {
+                this.Reflection.GetField<Dictionary<string, Dictionary<int, List<int>>>>(typeof(FarmerRenderer), "_recolorOffsets").GetValue().Remove(player.getTexture());
+                player.FarmerRenderer.MarkSpriteDirty();
+            }
+
+            return players.Any();
+        }
+
         /// <summary>Reload tree textures.</summary>
         /// <param name="content">The content manager through which to reload the asset.</param>
         /// <param name="key">The asset key to reload.</param>
@@ -873,8 +887,21 @@ namespace StardewModdingAPI.Metadata
                 return false;
 
             // update dialogue
+            // Note that marriage dialogue isn't reloaded after reset, but it doesn't need to be
+            // propagated anyway since marriage dialogue keys can't be added/removed and the field
+            // doesn't store the text itself.
             foreach (NPC villager in villagers)
+            {
+                bool shouldSayMarriageDialogue = villager.shouldSayMarriageDialogue.Value;
+                MarriageDialogueReference[] marriageDialogue = villager.currentMarriageDialogue.ToArray();
+
                 villager.resetSeasonalDialogue(); // doesn't only affect seasonal dialogue
+                villager.resetCurrentDialogue();
+
+                villager.shouldSayMarriageDialogue.Set(shouldSayMarriageDialogue);
+                villager.currentMarriageDialogue.Set(marriageDialogue);
+            }
+
             return true;
         }
 
@@ -896,18 +923,16 @@ namespace StardewModdingAPI.Metadata
                 this.Reflection.GetField<bool>(villager, "_hasLoadedMasterScheduleData").SetValue(false);
                 this.Reflection.GetField<Dictionary<string, string>>(villager, "_masterScheduleData").SetValue(null);
                 villager.Schedule = villager.getSchedule(Game1.dayOfMonth);
-                if (villager.Schedule == null)
-                {
-                    this.Monitor.Log($"A mod set an invalid schedule for {villager.Name ?? key}, so the NPC may not behave correctly.", LogLevel.Warn);
-                    return true;
-                }
 
                 // switch to new schedule if needed
-                int lastScheduleTime = villager.Schedule.Keys.Where(p => p <= Game1.timeOfDay).OrderByDescending(p => p).FirstOrDefault();
-                if (lastScheduleTime != 0)
+                if (villager.Schedule != null)
                 {
-                    villager.scheduleTimeToTry = NPC.NO_TRY; // use time that's passed in to checkSchedule
-                    villager.checkSchedule(lastScheduleTime);
+                    int lastScheduleTime = villager.Schedule.Keys.Where(p => p <= Game1.timeOfDay).OrderByDescending(p => p).FirstOrDefault();
+                    if (lastScheduleTime != 0)
+                    {
+                        villager.scheduleTimeToTry = NPC.NO_TRY; // use time that's passed in to checkSchedule
+                        villager.checkSchedule(lastScheduleTime);
+                    }
                 }
             }
             return true;
@@ -927,7 +952,14 @@ namespace StardewModdingAPI.Metadata
         /// <summary>Get all NPCs in the game (excluding farm animals).</summary>
         private IEnumerable<NPC> GetCharacters()
         {
-            return this.GetLocations().SelectMany(p => p.characters);
+            foreach (NPC character in this.GetLocations().SelectMany(p => p.characters))
+                yield return character;
+
+            if (Game1.CurrentEvent?.actors != null)
+            {
+                foreach (NPC character in Game1.CurrentEvent.actors)
+                    yield return character;
+            }
         }
 
         /// <summary>Get all farm animals in the game.</summary>
@@ -1008,9 +1040,9 @@ namespace StardewModdingAPI.Metadata
         /// <param name="path">The path to check.</param>
         private string[] GetSegments(string path)
         {
-            if (path == null)
-                return new string[0];
-            return path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return path != null
+                ? PathUtilities.GetSegments(path)
+                : new string[0];
         }
 
         /// <summary>Count the number of segments in a path (e.g. 'a/b' is 2).</summary>

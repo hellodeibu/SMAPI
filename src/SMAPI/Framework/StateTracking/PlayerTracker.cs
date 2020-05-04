@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using StardewModdingAPI.Enums;
-using StardewModdingAPI.Events;
+using StardewModdingAPI.Framework.StateTracking.Comparers;
 using StardewModdingAPI.Framework.StateTracking.FieldWatchers;
 using StardewValley;
-using ChangeType = StardewModdingAPI.Events.ChangeType;
 
 namespace StardewModdingAPI.Framework.StateTracking
 {
@@ -99,25 +98,32 @@ namespace StardewModdingAPI.Framework.StateTracking
             return this.Player.currentLocation ?? this.LastValidLocation;
         }
 
-        /// <summary>Get the player inventory changes between two states.</summary>
-        public IEnumerable<ItemStackChange> GetInventoryChanges()
+        /// <summary>Get the inventory changes since the last update, if anything changed.</summary>
+        /// <param name="changes">The inventory changes, or <c>null</c> if nothing changed.</param>
+        /// <returns>Returns whether anything changed.</returns>
+        public bool TryGetInventoryChanges(out SnapshotItemListDiff changes)
         {
-            IDictionary<Item, int> previous = this.PreviousInventory;
             IDictionary<Item, int> current = this.GetInventory();
-            foreach (Item item in previous.Keys.Union(current.Keys))
+
+            ISet<Item> added = new HashSet<Item>(new ObjectReferenceComparer<Item>());
+            ISet<Item> removed = new HashSet<Item>(new ObjectReferenceComparer<Item>());
+            foreach (Item item in this.PreviousInventory.Keys.Union(current.Keys))
             {
-                if (!previous.TryGetValue(item, out int prevStack))
-                    yield return new ItemStackChange { Item = item, StackChange = item.Stack, ChangeType = ChangeType.Added };
-                else if (!current.TryGetValue(item, out int newStack))
-                    yield return new ItemStackChange { Item = item, StackChange = -item.Stack, ChangeType = ChangeType.Removed };
-                else if (prevStack != newStack)
-                    yield return new ItemStackChange { Item = item, StackChange = newStack - prevStack, ChangeType = ChangeType.StackChange };
+                if (!this.PreviousInventory.ContainsKey(item))
+                    added.Add(item);
+                else if (!current.ContainsKey(item))
+                    removed.Add(item);
             }
+
+            return SnapshotItemListDiff.TryGetChanges(added: added, removed: removed, stackSizes: this.PreviousInventory, out changes);
         }
 
-        /// <summary>Stop watching the player fields and release all references.</summary>
+        /// <summary>Release watchers and resources.</summary>
         public void Dispose()
         {
+            this.PreviousInventory.Clear();
+            this.CurrentInventory?.Clear();
+
             foreach (IWatcher watcher in this.Watchers)
                 watcher.Dispose();
         }

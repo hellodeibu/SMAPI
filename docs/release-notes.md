@@ -1,47 +1,195 @@
 &larr; [README](README.md)
 
 # Release notes
-## Upcoming release
+## 3.5
+Released 27 April 2020 for Stardew Valley 1.4.1 or later.
 
 * For players:
+  * SMAPI now prevents more game errors due to broken items, so you no longer need save editing to remove them.
+  * Added option to disable console colors.
+  * Updated compatibility list.
+  * Improved translations.¹
+
+* For the Console Commands mod:
+  * Commands like `world_setday` now also affect the 'days played' stat, so in-game events/randomization match what you'd get if you played to that date normally (thanks to kdau!).
+
+* For the web UI:
+  * Updated the JSON validator/schema for Content Patcher 1.13.
+  * Fixed rare intermittent "CGI application encountered an error" errors.
+
+* For modders:
+  * Added map patching to the content API (via `asset.AsMap()`).
+  * Added support for using patch helpers with arbitrary data (via `helper.Content.GetPatchHelper`).
+  * Added `SDate` fields/methods: `SeasonIndex`, `FromDaysSinceStart`, `FromWorldDate`, `ToWorldDate`, and `ToLocaleString` (thanks to kdau!).
+  * Added `SDate` translations taken from the Lookup Anything mod.¹
+  * Fixed asset propagation for certain maps loaded through temporary content managers. This notably fixes unreliable patches to the farmhouse and town maps.
+  * Fixed asset propagation on Linux/Mac for monster sprites, NPC dialogue, and NPC schedules.
+  * Fixed asset propagation for NPC dialogue sometimes causing a spouse to skip marriage dialogue or not allow kisses.
+
+¹ Date format translations were taken from the Lookup Anything mod; thanks to translators FixThisPlz (improved Russian), LeecanIt (added Italian), pomepome (added Japanese), S2SKY (added Korean), Sasara (added German), SteaNN (added Russian), ThomasGabrielDelavault (added Spanish), VincentRoth (added French), Yllelder (improved Spanish), and yuwenlan (added Chinese). Some translations for Korean, Hungarian, and Turkish were derived from the game translations.
+
+## 3.4.1
+Released 24 March 2020 for Stardew Valley 1.4.1 or later.
+
+* For modders:
+  * Asset changes now propagate to NPCs in an event (e.g. wedding sprites).
+  * Fixed mouse input suppression not working in SMAPI 3.4.
+
+## 3.4
+Released 22 March 2020 for Stardew Valley 1.4.1 or later.
+
+* For players:
+  * Fixed semi-transparency issues on Linux/Mac in recent versions of Mono (e.g. pink shadows).
+  * Fixed `player_add` command error if you have broken XNB mods.
+  * Removed invalid-location check now handled by the game.
+  * Updated translations. Thanks to Annosz (added Hungarian)!
+
+* For modders:
+  * Added support for flipped and rotated map tiles (in collaboration with Platonymous).
+  * Added support for `.tmx` maps using zlib compression (thanks to Platonymous!).
+  * Added `this.Monitor.LogOnce` method.
+  * Mods are no longer prevented from suppressing key presses in the chatbox.
+
+* For the web UI:
+  * Added option to upload files using a file picker.
+  * Optimized log parser for very long multi-line log messages.
+  * Fixed log parser not detecting folder path in recent versions of SMAPI.
+
+* For SMAPI developers:
+  * Added internal API to send custom input to the game/mods. This is mainly meant to support Virtual Keyboard on Android, but might be exposed as a public API in future versions.
+
+## 3.3.2
+Released 22 February 2020 for Stardew Valley 1.4.1 or later.
+
+* Fixed mods receiving their own message broadcasts.
+
+## 3.3.1
+Released 22 February 2020 for Stardew Valley 1.4.1 or later.
+
+* Fixed errors with custom spouse room mods in SMAPI 3.3.
+
+## 3.3
+Released 22 February 2020 for Stardew Valley 1.4.1 or later.
+
+* For players:
+  * Improved performance for mods which load many images.
+  * Reduced network traffic for mod broadcasts to players who can't process them.
+  * Fixed update-check errors for recent versions of SMAPI on Android.
+  * Updated draw logic to match recent game updates.
+  * Updated compatibility list.
+  * Updated SMAPI/game version map.
+  * Updated translations. Thanks to xCarloC (added Italian)!
+
+* For the Save Backup mod:
+  * Fixed warning on MacOS when you have no saves yet.
+  * Reduced log messages.
+
+* For the web UI:
+  * Updated the JSON validator and Content Patcher schema for `.tmx` support.
+  * The mod compatibility page now has a sticky table header.
+
+* For modders:
+  * Added support for [message sending](https://stardewvalleywiki.com/Modding:Modder_Guide/APIs/Integrations#Message_sending) to mods on the current computer (in addition to remote computers).
+  * Added `ExtendImage` method to content API when editing files to resize textures.
+  * Added `helper.Input.GetState` to get the low-level state of a button.
+  * **[Breaking change]** Map tilesheets are no loaded from `Content` if they can't be found in `Content/Maps`. This reflects an upcoming change in the game to delete duplicate map tilesheets under `Content`. Most mods should be unaffected.
+  * Improved map tilesheet errors so they provide more info.
+  * When mods load an asset using a more general type like `content.Load<object>`, SMAPI now calls `IAssetEditor` instances with the actual asset type instead of the specified one.
+  * Updated dependencies (including Mono.Cecil 0.11.1 → 0.11.2).
+  * Fixed dialogue propagation clearing marriage dialogue.
+
+* For SMAPI/tool developers:
+  * Improved support for four-part versions to support SMAPI on Android.
+  * The SMAPI log now prefixes the OS name with `Android` on Android.
+
+## 3.2
+Released 01 February 2020 for Stardew Valley 1.4.1 or later.
+
+* For players:
+  * SMAPI now prevents crashes due to invalid schedule data.
+  * SMAPI now prevents crashes due to invalid building types.
+  * Added support for persistent `smapi-internal/config.json` overrides (see info in the file).
+  * Updated minimum game version (1.4 → 1.4.1).
+  * Fixed 'collection was modified' error when returning to title in rare cases.
+  * Fixed error when update-checking a mod with a Chucklefish page that has no version.
+  * Fixed rare error when building/demolishing buildings.
+  * Fixed SMAPI beta versions not showing update alert on next launch (thanks to danvolchek!).
+
+* For the Console Commands mod:
+  * Added `performance` command to track mod performance metrics. This is an advanced experimental feature. (Thanks to Drachenkätzchen!)
+  * Added `test_input` command to view button codes in the console.
+
+* For the Save Backup mod:
+  * Fixed extra files under `Saves` (e.g. manual backups) not being ignored.
+  * Fixed Android issue where game files were backed up.
+
+* For modders:
+  * Added support for `.tmx` map files. (Thanks to [Platonymous for the underlying library](https://github.com/Platonymous/TMXTile)!)
+  * Added special handling for `Vector2` values in `.json` files, so they work consistently crossplatform.
+  * Reworked the order that asset editors/loaders are called between multiple mods to support some framework mods like Content Patcher and Json Assets. Note that the order is undefined and should not be depended on.
+  * Fixed incorrect warning about mods adding invalid schedules in some cases. The validation was unreliable, and has been removed.
+  * Fixed asset propagation not updating other players' sprites.
+  * Fixed asset propagation for player sprites not updating recolor maps (e.g. sleeves).
+  * Fixed asset propagation for marriage dialogue.
+  * Fixed dialogue asset changes not correctly propagated until the next day.
+  * Fixed `helper.Data.Read`/`WriteGlobalData` using the `Saves` folder instead of the game's appdata folder. The installer will move existing folders automatically.
+  * Fixed issue where a mod which implemented `IAssetEditor`/`IAssetLoader` on its entry class could then remove itself from the editor/loader list.
+
+* For SMAPI/tool developers:
+  * Added internal performance monitoring (thanks to Drachenkätzchen!). This is disabled by default in the current version, but can be enabled using the `performance` console command.
+  * Added internal support for four-part versions to support SMAPI on Android.
+  * Rewrote `SemanticVersion` parsing.
+  * Updated links for the new r/SMAPI subreddit.
+  * The `/mods` web API endpoint now includes version mappings from the wiki.
+  * Dropped API support for the pre-3.0 update-check format.
+
+## 3.1
+Released 05 January 2019 for Stardew Valley 1.4.1 or later.
+
+* For players:
+  * Added separate group in 'skipped mods' list for broken dependencies, so it's easier to see what to fix first.
   * Added friendly log message for save file-not-found errors.
-  * Updated for the 'Force Off' gamepad mode added in Stardew Valley 1.4.1.
-  * The 'skipped mods' list now shows broken dependencies first, so it's easier to see which ones to fix first.
-  * Fixed compatibility with Linux Mint 18 (thanks to techge!) and Arch Linux.
-  * Fixed compatibility with Linux systems which have libhybris-utils installed.
-  * Fixes for the bundled Console Commands mod:
-    * added new clothing items;
-    * fixed spawning new flooring and rings (thanks to Mizzion!);
-    * fixed spawning custom rings added by mods;
-    * Fixed errors when some item data is invalid.
-  * Internal optimizations.
-  * Updated translations. Thanks to L30Bola (added Portuguese) and PlussRolf (added Spanish)!
+  * Updated for gamepad modes in Stardew Valley 1.4.1.
+  * Improved performance in some cases.
+  * Fixed compatibility with Linux Mint 18 (thanks to techge!), Arch Linux, and Linux systems with libhybris-utils installed.
+  * Fixed memory leak when repeatedly loading a save and returning to title.
+  * Fixed memory leak when mods reload assets.
+  * Updated translations. Thanks to L30Bola (added Portuguese), PlussRolf (added Spanish), and shirutan (added Japanese)!
+
+* For the Console Commands mod:
+  * Added new clothing items.
+  * Fixed spawning new flooring and rings (thanks to Mizzion!).
+  * Fixed spawning custom rings added by mods.
+  * Fixed errors when some item data is invalid.
 
 * For the web UI:
   * Added option to edit & reupload in the JSON validator.
-  * The log parser and JSON validator no longer save files to Pastebin due to ongoing performance issues. All files are now saved to Azure Blob storage instead and expire after one month.
+  * File uploads are now stored in Azure storage instead of Pastebin, due to ongoing Pastebin perfomance issues.
+  * File uploads now expire after one month.
   * Updated the JSON validator for Content Patcher 1.10 and 1.11.
-  * Fixed JSON validator no longer letting you change format when viewing results.
-  * Fixed JSON validator for Content Patcher schema not requiring `Default` if `AllowBlank` omitted.
+  * Fixed JSON validator no longer letting you change format when viewing a file.
+  * Fixed JSON validator for Content Patcher not requiring `Default` if `AllowBlank` was omitted.
   * Fixed log parser not correctly handling content packs with no author (thanks to danvolchek!).
   * Fixed main sidebar link pointing to wiki instead of home page.
 
 * For modders:
+  * Added `World.ChestInventoryChanged` event (thanks to collaboration with wartech0!).
   * Added asset propagation for...
     * grass textures;
     * winter flooring textures;
-    * `Data\Bundles` changes (for added bundles only).
-  * Added direct `Console` access to paranoid mode warnings.
+    * `Data\Bundles` changes (for added bundles only);
+    * `Characters\Farmer\farmer_girl_base_bald`.
+  * Added paranoid-mode warning for direct `Console` access.
   * Improved error messages for `TargetParameterCountException` when using the reflection API.
   * `helper.Read/WriteSaveData` can now be used while a save is being loaded (e.g. within a `Specialized.LoadStageChanged` event).
+  * Removed `DumpMetadata` option. It was only for specific debugging cases, but players would sometimes enable it incorrectly and then report crashes.
   * Fixed private textures loaded from content packs not having their `Name` field set.
-  * Fixed asset propagation for `Characters\Farmer\farmer_girl_base_bald`.
 
 * For SMAPI developers:
   * You can now run local environments without configuring Amazon, Azure, MongoDB, and Pastebin accounts.
 
 ## 3.0.1
-Released 02 December 2019 for Stardew Valley 1.4.0.1.
+Released 02 December 2019 for Stardew Valley 1.4 or later.
 
 * For players:
   * Updated for Stardew Valley 1.4.0.1.

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using StardewModdingAPI.Toolkit;
 using StardewModdingAPI.Web.Framework.LogParsing.Models;
 
 namespace StardewModdingAPI.Web.Framework.LogParsing
@@ -31,22 +30,22 @@ namespace StardewModdingAPI.Web.Framework.LogParsing
 
         /// <summary>A regex pattern matching an entry in SMAPI's mod list.</summary>
         /// <remarks>The author name and description are optional.</remarks>
-        private readonly Regex ModListEntryPattern = new Regex(@"^   (?<name>.+?) (?<version>" + SemanticVersion.UnboundedVersionPattern + @")(?: by (?<author>[^\|]+))?(?: \| (?<description>.+))?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private readonly Regex ModListEntryPattern = new Regex(@"^   (?<name>.+?) (?<version>[^\s]+)(?: by (?<author>[^\|]+))?(?: \| (?<description>.+))?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>A regex pattern matching the start of SMAPI's content pack list.</summary>
         private readonly Regex ContentPackListStartPattern = new Regex(@"^Loaded \d+ content packs:$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>A regex pattern matching an entry in SMAPI's content pack list.</summary>
-        private readonly Regex ContentPackListEntryPattern = new Regex(@"^   (?<name>.+?) (?<version>" + SemanticVersion.UnboundedVersionPattern + @")(?: by (?<author>[^\|]+))? \| for (?<for>[^\|]+)(?: \| (?<description>.+))?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private readonly Regex ContentPackListEntryPattern = new Regex(@"^   (?<name>.+?) (?<version>[^\s]+)(?: by (?<author>[^\|]+))? \| for (?<for>[^\|]+)(?: \| (?<description>.+))?$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>A regex pattern matching the start of SMAPI's mod update list.</summary>
         private readonly Regex ModUpdateListStartPattern = new Regex(@"^You can update \d+ mods?:$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>A regex pattern matching an entry in SMAPI's mod update list.</summary>
-        private readonly Regex ModUpdateListEntryPattern = new Regex(@"^   (?<name>.+?) (?<version>" + SemanticVersion.UnboundedVersionPattern + @"): (?<link>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private readonly Regex ModUpdateListEntryPattern = new Regex(@"^   (?<name>.+?) (?<version>[^\s]+): (?<link>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>A regex pattern matching SMAPI's update line.</summary>
-        private readonly Regex SMAPIUpdatePattern = new Regex(@"^You can update SMAPI to (?<version>" + SemanticVersion.UnboundedVersionPattern + @"): (?<link>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private readonly Regex SMAPIUpdatePattern = new Regex(@"^You can update SMAPI to (?<version>[^\s]+): (?<link>.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
 
         /*********
@@ -202,7 +201,7 @@ namespace StardewModdingAPI.Web.Framework.LogParsing
                         }
 
                         // mod path line
-                        else if (message.Level == LogLevel.Debug && this.ModPathPattern.IsMatch(message.Text))
+                        else if (message.Level == LogLevel.Info && this.ModPathPattern.IsMatch(message.Text))
                         {
                             Match match = this.ModPathPattern.Match(message.Text);
                             log.ModPath = match.Groups["path"].Value;
@@ -283,43 +282,47 @@ namespace StardewModdingAPI.Web.Framework.LogParsing
         /// <exception cref="LogParseException">The log text can't be parsed successfully.</exception>
         private IEnumerable<LogMessage> GetMessages(string logText)
         {
-            LogMessage message = new LogMessage();
-            using (StringReader reader = new StringReader(logText))
+            LogMessageBuilder builder = new LogMessageBuilder();
+            using StringReader reader = new StringReader(logText);
+            while (true)
             {
-                while (true)
-                {
-                    // read data
-                    string line = reader.ReadLine();
-                    if (line == null)
-                        break;
-                    Match header = this.MessageHeaderPattern.Match(line);
+                // read line
+                string line = reader.ReadLine();
+                if (line == null)
+                    break;
 
-                    // validate
-                    if (message.Text == null && !header.Success)
+                // match header
+                Match header = this.MessageHeaderPattern.Match(line);
+                bool isNewMessage = header.Success;
+
+                // start/continue message
+                if (isNewMessage)
+                {
+                    if (builder.Started)
+                    {
+                        yield return builder.Build();
+                        builder.Clear();
+                    }
+
+                    builder.Start(
+                        time: header.Groups["time"].Value,
+                        level: Enum.Parse<LogLevel>(header.Groups["level"].Value, ignoreCase: true),
+                        mod: header.Groups["modName"].Value,
+                        text: line.Substring(header.Length)
+                    );
+                }
+                else
+                {
+                    if (!builder.Started)
                         throw new LogParseException("Found a log message with no SMAPI metadata. Is this a SMAPI log file?");
 
-                    // start or continue message
-                    if (header.Success)
-                    {
-                        if (message.Text != null)
-                            yield return message;
-
-                        message = new LogMessage
-                        {
-                            Time = header.Groups["time"].Value,
-                            Level = Enum.Parse<LogLevel>(header.Groups["level"].Value, ignoreCase: true),
-                            Mod = header.Groups["modName"].Value,
-                            Text = line.Substring(header.Length)
-                        };
-                    }
-                    else
-                        message.Text += "\n" + line;
+                    builder.AddLine(line);
                 }
-
-                // end last message
-                if (message.Text != null)
-                    yield return message;
             }
+
+            // end last message
+            if (builder.Started)
+                yield return builder.Build();
         }
     }
 }

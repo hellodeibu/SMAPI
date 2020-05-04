@@ -64,7 +64,8 @@ namespace StardewModdingAPI.Framework.Content
             {
                 try
                 {
-                    return editor.CanEdit<TAsset>(asset);
+                    if (editor.CanEdit<TAsset>(asset))
+                        return true;
                 }
                 catch (Exception ex)
                 {
@@ -77,7 +78,8 @@ namespace StardewModdingAPI.Framework.Content
             {
                 try
                 {
-                    return loader.CanLoad<TAsset>(asset);
+                    if (loader.CanLoad<TAsset>(asset))
+                        return true;
                 }
                 catch (Exception ex)
                 {

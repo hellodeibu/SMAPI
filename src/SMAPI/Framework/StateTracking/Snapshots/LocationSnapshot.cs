@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using StardewValley;
 using StardewValley.Buildings;
+using StardewValley.Objects;
 using StardewValley.TerrainFeatures;
 
 namespace StardewModdingAPI.Framework.StateTracking.Snapshots
@@ -33,6 +34,9 @@ namespace StardewModdingAPI.Framework.StateTracking.Snapshots
         /// <summary>Tracks added or removed terrain features.</summary>
         public SnapshotListDiff<KeyValuePair<Vector2, TerrainFeature>> TerrainFeatures { get; } = new SnapshotListDiff<KeyValuePair<Vector2, TerrainFeature>>();
 
+        /// <summary>Tracks changed chest inventories.</summary>
+        public IDictionary<Chest, SnapshotItemListDiff> ChestItems { get; } = new Dictionary<Chest, SnapshotItemListDiff>();
+
 
         /*********
         ** Public methods
@@ -48,12 +52,21 @@ namespace StardewModdingAPI.Framework.StateTracking.Snapshots
         /// <param name="watcher">The watcher to snapshot.</param>
         public void Update(LocationTracker watcher)
         {
+            // main lists
             this.Buildings.Update(watcher.BuildingsWatcher);
             this.Debris.Update(watcher.DebrisWatcher);
             this.LargeTerrainFeatures.Update(watcher.LargeTerrainFeaturesWatcher);
             this.Npcs.Update(watcher.NpcsWatcher);
             this.Objects.Update(watcher.ObjectsWatcher);
             this.TerrainFeatures.Update(watcher.TerrainFeaturesWatcher);
+
+            // chest inventories
+            this.ChestItems.Clear();
+            foreach (ChestTracker tracker in watcher.ChestWatchers.Values)
+            {
+                if (tracker.TryGetInventoryChanges(out SnapshotItemListDiff changes))
+                    this.ChestItems[tracker.Chest] = changes;
+            }
         }
     }
 }

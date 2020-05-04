@@ -41,6 +41,10 @@ namespace StardewModdingAPI.Framework.ContentManagers
         /// <summary>A list of disposable assets.</summary>
         private readonly List<WeakReference<IDisposable>> Disposables = new List<WeakReference<IDisposable>>();
 
+        /// <summary>The disposable assets tracked by the base content manager.</summary>
+        /// <remarks>This should be kept empty to avoid keeping disposable assets referenced forever, which prevents garbage collection when they're unused. Disposable assets are tracked by <see cref="Disposables"/> instead, which avoids a hard reference.</remarks>
+        private readonly List<IDisposable> BaseDisposableReferences;
+
 
         /*********
         ** Accessors
@@ -84,6 +88,7 @@ namespace StardewModdingAPI.Framework.ContentManagers
 
             // get asset data
             this.LanguageCodes = this.GetKeyLocales().ToDictionary(p => p.Value, p => p.Key, StringComparer.InvariantCultureIgnoreCase);
+            this.BaseDisposableReferences = reflection.GetField<List<IDisposable>>(this, "disposableAssets").GetValue();
         }
 
         /// <summary>Load an asset that has been processed by the content pipeline.</summary>
@@ -276,6 +281,9 @@ namespace StardewModdingAPI.Framework.ContentManagers
                 assetName = this.AssertAndNormalizeAssetName(assetName);
                 this.Cache[assetName] = value;
             }
+
+            // avoid hard disposable references; see remarks on the field
+            this.BaseDisposableReferences.Clear();
         }
 
         /// <summary>Parse a cache key into its component parts.</summary>

@@ -11,6 +11,13 @@ namespace StardewModdingAPI.Framework.StateTracking.Snapshots
     internal class PlayerSnapshot
     {
         /*********
+        ** Fields
+        *********/
+        /// <summary>An empty item list diff.</summary>
+        private readonly SnapshotItemListDiff EmptyItemListDiff = new SnapshotItemListDiff(new Item[0], new Item[0], new ItemStackSizeChange[0]);
+
+
+        /*********
         ** Accessors
         *********/
         /// <summary>The player being tracked.</summary>
@@ -27,7 +34,7 @@ namespace StardewModdingAPI.Framework.StateTracking.Snapshots
                 .ToDictionary(skill => skill, skill => new SnapshotDiff<int>());
 
         /// <summary>Get a list of inventory changes.</summary>
-        public IEnumerable<ItemStackChange> InventoryChanges { get; private set; }
+        public SnapshotItemListDiff Inventory { get; private set; }
 
 
         /*********
@@ -47,7 +54,11 @@ namespace StardewModdingAPI.Framework.StateTracking.Snapshots
             this.Location.Update(watcher.LocationWatcher);
             foreach (var pair in this.Skills)
                 pair.Value.Update(watcher.SkillWatchers[pair.Key]);
-            this.InventoryChanges = watcher.GetInventoryChanges().ToArray();
+
+            this.Inventory = watcher.TryGetInventoryChanges(out SnapshotItemListDiff itemChanges)
+                ? itemChanges
+                : this.EmptyItemListDiff;
+
         }
     }
 }

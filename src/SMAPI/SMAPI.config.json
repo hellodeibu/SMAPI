@@ -6,6 +6,12 @@ This file contains advanced configuration for SMAPI. You generally shouldn't cha
 The default values are mirrored in StardewModdingAPI.Framework.Models.SConfig to log custom changes.
 
 
+This file is overwritten each time you update or reinstall SMAPI. To avoid losing custom settings,
+create a 'config.user.json' file in the same folder with *only* the settings you want to change.
+That file won't be overwritten, and any settings in it will override the default options. Don't
+copy all the settings, or you may cause bugs due to overridden changes in future SMAPI versions.
+
+
 
 */
 {
@@ -60,12 +66,6 @@ The default values are mirrored in StardewModdingAPI.Framework.Models.SConfig to
     "LogNetworkTraffic": false,
 
     /**
-     * Whether to generate a 'SMAPI-latest.metadata-dump.json' file in the logs folder with the full mod
-     * metadata for detected mods. This is only needed when troubleshooting some cases.
-     */
-    "DumpMetadata": false,
-
-    /**
      * The colors to use for text written to the SMAPI console.
      *
      * The possible values for 'UseScheme' are:
@@ -73,6 +73,7 @@ The default values are mirrored in StardewModdingAPI.Framework.Models.SConfig to
      *    automatically on Linux or Windows.
      *  - LightBackground: use darker text colors that look better on a white or light background.
      *  - DarkBackground: use lighter text colors that look better on a black or dark background.
+     *  - None: disables all colors, so everything is written in the default terminal color.
      *
      * For available color codes, see https://docs.microsoft.com/en-us/dotnet/api/system.consolecolor.
      *
